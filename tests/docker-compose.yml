@@ -1,0 +1,76 @@
+version: '3'
+
+services:
+  tests:
+    build: E2E/
+    environment:
+#      SELENIUM_HOST: selenium-chrome
+#      URL: prestashop-web
+      SELENIUM_HOST: 192.168.0.1
+      URL: localhost:8002
+    depends_on:
+      - "prestashop"
+#      - "selenium-chrome"
+#    command: ["/tmp/wait-for-it.sh", "--timeout=200", "--strict", "prestashop:80", "--", "/tmp/node_modules/mocha/bin/mocha /tmp/test/campaigns/high/13_installation/3_autoupgrade.js", "--URL=prestashop-web", "--SELENIUM=selenium-chrome", "--DIR=/home/seluser/Downloads/", "--DB_SERVER=db", "--DB_USER=root", "--DB_PASSWD=admin", "--RCTARGET=/var/www/html/", "--RCLINK=http://localhost/prestashop_1.7.3.0-RC1.zip", "--URLLASTSTABLEVERSION=prestashop-web"]
+    command: ["/tmp/wait-for-it.sh", "--timeout=200", "--strict", "prestashop:80", "--", "/tmp/node_modules/mocha/bin/mocha /tmp/test/campaigns/high/13_installation/3_autoupgrade.js", "--URL=localhost:8002", "--SELENIUM=192.168.0.1", "--DIR=/home/seluser/Downloads/", "--DB_SERVER=db", "--DB_USER=root", "--DB_PASSWD=admin", "--RCTARGET=/var/www/html/", '--RCLINK=localhost/prestashop_1.7.3.0-RC1.zip', "--URLLASTSTABLEVERSION=localhost:8002"]
+    volumes:
+      - ./screenshots/:/home/test/screenshots/
+#      - downloads:/home/seluser/Downloads
+    networks:
+      - default
+      - dockernet
+
+  prestashop:
+    build: E2E/docker_prestashop/
+    environment:
+      DB_SERVER: db
+      PS_INSTALL_AUTO: 0
+      PS_COUNTRY: fr
+#      PS_DOMAIN: prestashop-web
+      PS_DOMAIN: localhost:8002
+      PS_FOLDER_ADMIN: admin-dev
+      PS_FOLDER_INSTALL: install-dev
+    depends_on:
+      - "db"
+    command: ["/tmp/wait-for-it.sh", "--timeout=60", "--strict", "db:3306", "--", "/tmp/docker_run.sh"]
+    ports:
+        - 8002:80
+    networks:
+      default:
+          aliases:
+              - prestashop-web
+
+#  selenium-chrome:
+#    image: selenium/standalone-chrome
+#    ports:
+#      - 4444:4444
+#    volumes:
+#        - downloads:/home/seluser/Downloads
+#    networks:
+#      default:
+#          aliases:
+#              - selenium-chrome
+
+  db:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+    networks:
+      - default
+
+volumes:
+    downloads:
+
+networks:
+  default:
+  dockernet:
+    driver: bridge
+    driver_opts:
+        subnet: 192.168.0.0/24
+        gateway: 192.168.0.1
+#    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+      -
+        subnet: 192.168.0.0/24

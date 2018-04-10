@@ -110,14 +110,6 @@ abstract class CoreUpgrader
     protected function initConstants()
     {
         // Initialize
-        // setting the memory limit to 128M only if current is lower
-        $memory_limit = ini_get('memory_limit');
-        if ((substr($memory_limit, -1) != 'G')
-            && ((substr($memory_limit, -1) == 'M' and substr($memory_limit, 0, -1) < 128)
-                || is_numeric($memory_limit) and (intval($memory_limit) < 131072))
-        ) {
-            @ini_set('memory_limit', '128M');
-        }
 
         /* Redefine REQUEST_URI if empty (on some webservers...) */
         if (!isset($_SERVER['REQUEST_URI']) || empty($_SERVER['REQUEST_URI'])) {

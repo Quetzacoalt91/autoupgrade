@@ -234,7 +234,6 @@ class UpgradeSelfCheck
             && $this->isShopDeactivated()
             && $this->isCacheDisabled()
             && $this->isModuleVersionLatest()
-            && $this->isPrestaShopReady()
         );
     }
 

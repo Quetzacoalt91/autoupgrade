@@ -62,7 +62,7 @@ class ModuleAdapter
      *
      * @global AppKernel $kernel
      *
-     * @return PrestaShop\PrestaShop\Adapter\Module\ModuleDataUpdater
+     * @return \PrestaShop\PrestaShop\Adapter\Module\ModuleDataUpdater
      */
     public function getModuleDataUpdater()
     {

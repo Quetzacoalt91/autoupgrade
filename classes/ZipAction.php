@@ -319,7 +319,7 @@ class ZipAction
         return $files;
     }
 
-    private function listWithPclZip($zipfile)
+    private function listWithPclZip($zipFile)
     {
         $zip = $this->openWithPclZip($zipFile);
         if ($zip !== false) {

@@ -312,6 +312,7 @@ class ZipAction
             return false;
         }
 
+        $files = [];
         for ($i = 0; $i < $zip->numFiles; ++$i) {
             $files[] = $zip->getNameIndex($i);
         }

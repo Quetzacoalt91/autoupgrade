@@ -36,7 +36,7 @@ class StreamedLogger extends Logger
     /**
      * @var int Minimum criticity of level to display
      */
-    protected $filter = self::INFO;
+    protected $filter = self::DEBUG;
 
     /**
      * @var resource File handler of standard output

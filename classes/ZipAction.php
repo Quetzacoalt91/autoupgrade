@@ -27,6 +27,7 @@
 
 namespace PrestaShop\Module\AutoUpgrade;
 
+use PclZip;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
@@ -50,7 +51,7 @@ class ZipAction
      * if set to true, will use pclZip library
      * even if ZipArchive is available.
      */
-    const FORCE_PCLZIP = false;
+    const FORCE_PCLZIP = true;
 
     public function __construct($translator, LoggerInterface $logger, UpgradeConfiguration $configuration, $prodRootDir)
     {
@@ -103,10 +104,17 @@ class ZipAction
         return true;
     }
 
+    /**
+     * Get the archive content
+     * 
+     * @var string Path to the Zip file
+     * 
+     * @return false|array Archive content, false in case of error
+     */
     public function listContent($zipfile)
     {
         if (!file_exists($zipfile)) {
-            return array();
+            return false;
         }
         $res = $this->listWithZipArchive($zipfile);
         if (is_array($res)) {
@@ -118,7 +126,7 @@ class ZipAction
         }
         $this->logger->error($this->translator->trans('[ERROR] Unable to list archived files', array(), 'Modules.Autoupgrade.Admin'));
 
-        return array();
+        return false;
     }
 
     private function compressWithZipArchive(&$filesList, $toFile)

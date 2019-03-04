@@ -331,16 +331,20 @@ class ZipAction
     private function listWithPclZip($zipFile)
     {
         $zip = $this->openWithPclZip($zipFile);
-        if ($zip !== false) {
+        if ($zip === false) {
             return false;
         }
 
-        return $zip->listContent();
+        $content = [];
+        foreach ($zip->listContent() as $file) {
+            $content[] = $file['filename'];
+        };
+        return $content;
     }
 
     private function openWithZipArchive($zipFile, $flags = null)
     {
-        if (self::FORCE_PCLZIP || !class_exists('ZipArchive', false)) {
+        if (static::FORCE_PCLZIP || !class_exists('ZipArchive', false)) {
             return false;
         }
 
@@ -363,8 +367,9 @@ class ZipAction
 
         $this->logger->debug($this->translator->trans('Using class PclZip...', array(), 'Modules.Autoupgrade.Admin'));
         $zip = new \PclZip($zipFile);
-        if (!$zip) {
-            $this->logger->error($this->translator->trans('Unable to open archive', array(), 'Modules.Autoupgrade.Admin'));
+        if (0 === $zip->properties()) {
+            $this->logger->error($this->translator->trans('Unable to open archive %file%', array('%file%' => $zipFile), 'Modules.Autoupgrade.Admin'));
+            return false;
         }
 
         return $zip;

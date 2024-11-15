@@ -33,9 +33,7 @@ jobs:
       - name: Clean-up project
         uses: PrestaShopCorp/github-action-clean-before-deploy@v2.0
         with:
-          paths:
-            - storybook
-            - _dev
+          paths: storybook _dev
 
       - name: Create & upload artifact
         uses: actions/upload-artifact@v4.1.0

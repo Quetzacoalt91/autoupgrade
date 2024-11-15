@@ -41,6 +41,7 @@ class DbWrapper
      */
     public static function update(string $table, array $data, string $where = '', int $limit = 0, bool $null_values = false, bool $use_cache = true, bool $add_prefix = true): bool
     {
+        // TODO: This should be reported in the things to fix
         $result = Db::getInstance()->update($table, $data, $where, $limit, $null_values, $use_cache, $add_prefix);
         self::validateDBQuerySuccess();
 

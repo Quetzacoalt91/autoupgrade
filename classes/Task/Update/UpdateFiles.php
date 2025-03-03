@@ -301,7 +301,6 @@ class UpdateFiles extends AbstractTask
                 $symlink['name'] = $admin_dir . '/' . substr($symlink['name'], 6);
             }
         }
-        $this->logger->debug('Warmup symbolic links : ' . var_export($symbolicLinks, true));
 
         $totalSymbolicLinks = count($symbolicLinks);
         $this->container->getFileStorage()->save(

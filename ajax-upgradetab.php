@@ -30,6 +30,17 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * Calling it from the module/autoupgrade folder will have unwanted consequences on the upgrade and your shop.
  */
+
+// TODO: Need to have this in the htaccess as well. Hook?
+header('Access-Control-Allow-Origin: http://localhost:5173');
+header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Allow-Methods: OPTIONS, POST, GET');
+header('Access-Control-Allow-Headers: cookie,authorization,x-requested-with');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {    
+    exit(0);    
+}
+ 
 require_once realpath(dirname(__FILE__) . '/../../modules/autoupgrade') . '/ajax-upgradetabconfig.php';
 $container = autoupgrade_init_container(dirname(__FILE__));
 

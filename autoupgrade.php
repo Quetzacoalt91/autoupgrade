@@ -30,6 +30,8 @@ class Autoupgrade extends Module
      */
     protected $container;
 
+    // This PR contains changes here and in a migration script -> The label is expected.
+
     public function __construct()
     {
         $this->name = 'autoupgrade';

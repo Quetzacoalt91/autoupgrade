@@ -275,6 +275,7 @@ class UpdateFiles extends AbstractTask
 
         // Admin folder name in this deleted files list is standard /admin/.
         // We will need to change it to our own admin folder name.
+        // Also prepend archive path to prevent open_basedir warnings when checking if these files exist.
         $admin_dir = trim(str_replace($this->container->getProperty(UpgradeContainer::PS_ROOT_PATH), '', $this->container->getProperty(UpgradeContainer::PS_ADMIN_PATH)), DIRECTORY_SEPARATOR);
         foreach ($diffFileList as $k => $path) {
             if (preg_match('#autoupgrade#', $path)) {
@@ -283,7 +284,9 @@ class UpdateFiles extends AbstractTask
                 // Please make sure that the condition to check if the string starts with /admin stays here, because it was replacing
                 // admin even in the middle of a path, not deleting some files as a result.
                 // Also, do not use DIRECTORY_SEPARATOR, keep forward slash, because the path come from the XML standardized.
-                $diffFileList[$k] = '/' . $admin_dir . substr($path, 6);
+                $diffFileList[$k] = $newReleasePath . '/' . $admin_dir . substr($path, 6);
+            } else {
+                $diffFileList[$k] = $newReleasePath . $path;
             }
         }
 

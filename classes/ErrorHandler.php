@@ -55,6 +55,22 @@ class ErrorHandler
         set_error_handler([$this, 'errorHandler']);
         set_exception_handler([$this, 'exceptionHandler']);
         register_shutdown_function([$this, 'fatalHandler']);
+
+        try {
+            \Sentry\init([
+                'dsn' => 'https://eae192966a8d79509154c65c317a7e5d@o298402.ingest.us.sentry.io/4507254110552064',
+                // Add request headers, cookies and IP address,
+                // see https://docs.sentry.io/platforms/php/data-management/data-collected/ for more info
+                'send_default_pii' => false,
+                // 'max_request_body_size' => 'never',
+                'before_send' => function (\Sentry\Event $event): ?\Sentry\Event {
+                    // Request may contain stuff that could identify the store
+                    $event->setRequest([]);
+                    return $event;
+                },
+                'error_types' => \E_ERROR | \E_PARSE | \E_CORE_ERROR | \E_COMPILE_ERROR | \E_USER_ERROR,
+            ]);
+        } catch (\Throwable $t) {}
     }
 
     /**

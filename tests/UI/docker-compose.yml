@@ -22,14 +22,33 @@ services:
       - DB_PASSWD=prestashop
       - DB_NAME=prestashop
       - DB_PREFIX=ps_
+      - PS_URL_TRACKING=0
     volumes:
       - type: bind
         # Local Path
         source: ../../
         # Mount Path
         target: /var/www/html/modules/autoupgrade
+      - type: bind
+       # Local Path
+        source: ./post-install/install-update.sh
+       # Mount Path
+        target: /usr/local/bin/install-update.sh
+      - type: bind
+        # Local Path
+        source: ./post-install/disable-welcome.sh
+        # Mount Path
+        target: /usr/local/bin/disable-welcome.sh
     ports:
-      - 80:80
+      - "80:80"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2048M
+        reservations:
+          cpus: '1'
+          memory: 2048M
   mysql:
     image: mysql:5.7
     container_name: prestashop-mysql

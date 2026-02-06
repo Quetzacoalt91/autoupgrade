@@ -1,3 +1,21 @@
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
 import {
   // Import utils
   utilsTest,
@@ -11,8 +29,9 @@ import {
 import {
   test, expect, Page, BrowserContext,
 } from '@playwright/test';
+import semver from 'semver';
 
-const baseContext: string = 'sanity_catalogFO_filterProducts';
+const psVersion = utilsTest.getPSVersion();
 
 /*
   Open the FO home page
@@ -35,8 +54,6 @@ test.describe('FO - Catalog : Filter Products by categories in Home page', async
 
   // Steps
   test('should open the shop page', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'goToShopFO', baseContext);
-
     await foClassicHomePage.goTo(page, global.FO.URL);
 
     const result = await foClassicHomePage.isHomePage(page);
@@ -44,32 +61,46 @@ test.describe('FO - Catalog : Filter Products by categories in Home page', async
   });
 
   test('should check and get the products number', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'checkNumberOfProducts', baseContext);
-
     await foClassicHomePage.goToAllProductsPage(page);
 
     allProductsNumber = await foClassicCategoryPage.getNumberOfProducts(page);
     expect(allProductsNumber).toBeGreaterThan(0);
   });
 
-  test('should filter products by the category \'Accessories\' and check result', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'FilterProductByCategory', baseContext);
+  if (semver.gte(psVersion, '7.3.0')) {
+    test('should filter products by category and check result', async () => {
+      if (allProductsNumber > 7) {
+        await foClassicCategoryPage.goToCategory(page, dataCategories.accessories.id);
 
-    await foClassicCategoryPage.goToCategory(page, dataCategories.accessories.id);
+        const pageTitle = await foClassicCategoryPage.getPageTitle(page);
+        expect(pageTitle).toEqual(dataCategories.accessories.name);
 
-    const pageTitle = await foClassicCategoryPage.getPageTitle(page);
-    expect(pageTitle).toEqual(dataCategories.accessories.name);
+        const numberOfProducts = await foClassicCategoryPage.getNumberOfProducts(page);
+        expect(numberOfProducts).toBeLessThan(allProductsNumber);
+      } else {
+        await foClassicCategoryPage.goToCategory(page, dataCategories.oldWomen.id);
 
-    const numberOfProducts = await foClassicCategoryPage.getNumberOfProducts(page);
-    expect(numberOfProducts).toBeLessThan(allProductsNumber);
-  });
+        const pageTitle = await foClassicCategoryPage.getPageTitle(page);
+        expect(pageTitle).toEqual(dataCategories.oldWomen.name);
 
-  test('should filter products by the subcategory \'Stationery\' and check result', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'FilterProductBySubCategory', baseContext);
+        const numberOfProducts = await foClassicCategoryPage.getNumberOfProducts(page);
+        expect(numberOfProducts).toEqual(allProductsNumber);
+      }
+    });
+  }
 
+  test('should filter products by subcategory and check result', async () => {
     await foClassicCategoryPage.reloadPage(page);
-    await foClassicCategoryPage.goToSubCategory(page, dataCategories.accessories.id, dataCategories.stationery.id);
+    // Based on the scenario, the mouse already points to a menu that must be opened in the next steps.
+    // On PS 1.7.3.0, the menu does not react if the mouse hovers it while the JS is being initialized,
+    // so we move it elsewhere.
+    await page.mouse.move(0, 0);
 
+    if (allProductsNumber > 7) {
+      await foClassicCategoryPage.goToSubCategory(page, dataCategories.accessories.id, dataCategories.stationery.id);
+    } else {
+      await foClassicCategoryPage.goToSubCategory(page, dataCategories.oldWomen.id, dataCategories.eveningDresses.id);
+    }
     const numberOfProducts = await foClassicCategoryPage.getNumberOfProducts(page);
     expect(numberOfProducts).toBeLessThan(allProductsNumber);
   });

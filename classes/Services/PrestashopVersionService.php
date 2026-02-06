@@ -1,4 +1,22 @@
 <?php
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
 
 namespace PrestaShop\Module\AutoUpgrade\Services;
 
@@ -7,6 +25,7 @@ use PrestaShop\Module\AutoUpgrade\ZipAction;
 use RuntimeException;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Filesystem\Filesystem;
 
 class PrestashopVersionService
 {
@@ -15,9 +34,15 @@ class PrestashopVersionService
      */
     private $zipAction;
 
-    public function __construct(ZipAction $zipAction)
+    /**
+     * @var Filesystem
+     */
+    private $filesystem;
+
+    public function __construct(ZipAction $zipAction, Filesystem $filesystem)
     {
         $this->zipAction = $zipAction;
+        $this->filesystem = $filesystem;
     }
 
     /**
@@ -29,7 +54,7 @@ class PrestashopVersionService
         $internalZipFileName = 'prestashop.zip';
         $versionFile = 'install/install_version.php';
 
-        if (!file_exists($zipFile)) {
+        if (!$this->filesystem->exists($zipFile)) {
             throw new FileNotFoundException("Unable to find $zipFile file");
         }
         $zip = $this->zipAction->open($zipFile);
@@ -42,7 +67,7 @@ class PrestashopVersionService
         $fileContent = $this->zipAction->extractFileFromArchive($internalZip, $versionFile);
         $internalZip->close();
 
-        @unlink($tempInternalZipPath);
+        $this->filesystem->remove($tempInternalZipPath);
 
         return $this->extractVersionFromContent($fileContent);
     }
@@ -66,10 +91,8 @@ class PrestashopVersionService
      */
     private function createTemporaryFile(string $content): string
     {
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'internal_zip_');
-        if (file_put_contents($tempFilePath, $content) === false) {
-            throw new IOException('Unable to create temporary file');
-        }
+        $tempFilePath = $this->filesystem->tempnam(sys_get_temp_dir(), 'internal_zip_');
+        $this->filesystem->appendToFile($tempFilePath, $content);
 
         return $tempFilePath;
     }

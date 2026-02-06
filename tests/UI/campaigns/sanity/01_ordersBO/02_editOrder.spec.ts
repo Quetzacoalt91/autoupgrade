@@ -1,6 +1,22 @@
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
 import {
-  // Import utils
-  utilsTest,
   // Import BO pages
   boDashboardPage,
   boLoginPage,
@@ -14,8 +30,6 @@ import {
 import {
   test, expect, Page, BrowserContext,
 } from '@playwright/test';
-
-const baseContext: string = 'sanity_ordersBO_editOrder';
 
 /*
   Connect to the BO
@@ -37,8 +51,6 @@ test.describe('BO - Orders - Orders : Edit Order BO', async () => {
 
   // Steps
   test('should login in BO', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'loginBO', baseContext);
-
     await boLoginPage.goTo(page, global.BO.URL);
     await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
 
@@ -47,8 +59,6 @@ test.describe('BO - Orders - Orders : Edit Order BO', async () => {
   });
 
   test('should go to the \'Orders > Orders\' page', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'goToOrdersPage', baseContext);
-
     await boDashboardPage.goToSubMenu(
       page,
       boDashboardPage.ordersParentLink,
@@ -61,8 +71,6 @@ test.describe('BO - Orders - Orders : Edit Order BO', async () => {
   });
 
   test('should go to the first order page', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'goToFirstOrder', baseContext);
-
     await boOrdersPage.goToOrder(page, 1);
 
     const pageTitle = await boOrdersViewBlockProductsPage.getPageTitle(page);
@@ -70,23 +78,17 @@ test.describe('BO - Orders - Orders : Edit Order BO', async () => {
   });
 
   test('should modify the product quantity and check the validation', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'editProductQuantity', baseContext);
-
     const newQuantity = await boOrdersViewBlockProductsPage.modifyProductQuantity(page, 1, 5);
     expect(newQuantity, 'Quantity was not updated').toEqual(5);
   });
 
   test('should modify the order status and check the validation', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'editOrderStatus', baseContext);
-
     const orderStatus = await boOrdersViewBasePage.modifyOrderStatus(page, dataOrderStatuses.paymentAccepted.name);
     expect(orderStatus).toEqual(dataOrderStatuses.paymentAccepted.name);
   });
 
   // Logout from BO
   test('should log out from BO', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'logoutBO', baseContext);
-
     await boLoginPage.logoutBO(page);
 
     const pageTitle = await boLoginPage.getPageTitle(page);

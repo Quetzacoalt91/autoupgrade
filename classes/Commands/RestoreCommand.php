@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,28 +14,26 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Commands;
 
 use Exception;
+use InvalidArgumentException;
+use PrestaShop\Module\AutoUpgrade\DocumentationLinks;
+use PrestaShop\Module\AutoUpgrade\Parameters\RestoreConfiguration;
 use PrestaShop\Module\AutoUpgrade\Task\ExitCode;
 use PrestaShop\Module\AutoUpgrade\Task\Runner\AllRestoreTasks;
+use PrestaShop\Module\AutoUpgrade\VersionUtils;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class RestoreCommand extends AbstractCommand
+class RestoreCommand extends AbstractBackupCommand
 {
     /**
      * @var string
@@ -45,9 +43,9 @@ class RestoreCommand extends AbstractCommand
     protected function configure(): void
     {
         $this
-            ->setDescription('Restore your store.')
+            ->setDescription('Restore the store to a previous state from a backup file.')
             ->setHelp(
-                'This command allows you to restore your store from a backup.' .
+                'This command allows you to restore the store to a previous state from a backup file.' .
                 'See https://devdocs.prestashop-project.org/8/basics/keeping-up-to-date/upgrade-module/upgrade-cli/#rollback-cli for more details'
             )
             ->addArgument('admin-dir', InputArgument::REQUIRED, 'The admin directory name.')
@@ -60,29 +58,46 @@ class RestoreCommand extends AbstractCommand
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
         try {
-            $this->setupContainer($input, $output);
+            $this->setupEnvironment($input, $output);
 
             $backup = $input->getOption('backup');
 
             if (!$backup) {
-                $this->logger->error("The '--backup' option is required.");
+                if (!$input->isInteractive()) {
+                    throw new InvalidArgumentException("The '--backup' option is required.");
+                }
 
-                return ExitCode::FAIL;
+                $backup = $this->selectBackupInteractive($input, $output);
+
+                if (!$backup) {
+                    return ExitCode::SUCCESS;
+                }
             }
-
             $controller = new AllRestoreTasks($this->upgradeContainer);
             $controller->setOptions([
-                'backup' => $backup,
+                RestoreConfiguration::BACKUP_NAME => $backup,
             ]);
             $controller->init();
             $exitCode = $controller->run();
+
+            if ($exitCode === ExitCode::SUCCESS) {
+                $this->printPostProcessChecklist($output);
+            }
+
             $this->logger->debug('Process completed with exit code: ' . $exitCode);
 
             return $exitCode;
         } catch (Exception $e) {
-            $this->logger->error('An error occurred during the restoration process: ' . $e->getMessage());
-
-            return ExitCode::FAIL;
+            $this->logger->error("An error occurred during the restoration process:\n" . $e);
+            throw $e;
         }
+    }
+
+    private function printPostProcessChecklist(OutputInterface $output): void
+    {
+        $version = $this->upgradeContainer->getPrestaShopConfiguration()->getPrestaShopVersion();
+        $major = VersionUtils::splitPrestaShopVersion($version)['major'];
+
+        $output->writeln('We recommend you to visit the Post-restore checklist page in the developer documentation for any further help: ' . DocumentationLinks::getDevDocUpdateAssistantPostRestoreUrl($major));
     }
 }

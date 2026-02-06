@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade;
@@ -31,63 +25,49 @@ use PrestaShop\Module\AutoUpgrade\Exceptions\DistributionApiException;
 use PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException;
 use PrestaShop\Module\AutoUpgrade\Models\PrestashopRelease;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
+use PrestaShop\Module\AutoUpgrade\Services\DistributionApiService;
 use PrestaShop\Module\AutoUpgrade\Services\PhpVersionResolverService;
+use PrestaShop\Module\AutoUpgrade\UpgradeTools\Translator;
 use PrestaShop\Module\AutoUpgrade\Xml\FileLoader;
-use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 
 class Upgrader
 {
     const DEFAULT_CHECK_VERSION_DELAY_HOURS = 12;
 
-    /** @var PrestashopRelease */
-    private $onlineDestinationRelease;
+    /** @var Translator */
+    protected $translator;
+    /** @var array<string, PrestaShopRelease> */
+    private $onlineDestinationReleases;
     /** @var string */
     protected $currentPsVersion;
     /** @var PhpVersionResolverService */
     protected $phpVersionResolverService;
     /** @var UpgradeConfiguration */
-    protected $upgradeConfiguration;
+    protected $updateConfiguration;
+    /** @var Filesystem */
+    protected $filesystem;
+    /** @var FileLoader */
+    protected $fileLoader;
+    /** @var DistributionApiService */
+    protected $distributionApiService;
 
     public function __construct(
+        Translator $translator,
         PhpVersionResolverService $phpRequirementService,
-        UpgradeConfiguration $upgradeConfiguration,
+        UpgradeConfiguration $updateConfiguration,
+        Filesystem $filesystem,
+        FileLoader $fileLoader,
+        DistributionApiService $distributionApiService,
         string $currentPsVersion
     ) {
-        $this->currentPsVersion = $currentPsVersion;
+        $this->translator = $translator;
         $this->phpVersionResolverService = $phpRequirementService;
-        $this->upgradeConfiguration = $upgradeConfiguration;
-    }
-
-    /**
-     * downloadLast download the last version of PrestaShop and save it in $dest/$filename.
-     *
-     * @param string $dest directory where to save the file
-     * @param string $filename new filename
-     *
-     * @throws DistributionApiException
-     * @throws UpgradeException
-     *
-     * @TODO ftp if copy is not possible (safe_mode for example)
-     */
-    public function downloadLast(string $dest, string $filename): bool
-    {
-        if ($this->onlineDestinationRelease === null) {
-            $this->getOnlineDestinationRelease();
-        }
-
-        $destPath = realpath($dest) . DIRECTORY_SEPARATOR . $filename;
-
-        try {
-            $filesystem = new Filesystem();
-            $filesystem->copy($this->onlineDestinationRelease->getZipDownloadUrl(), $destPath);
-        } catch (IOException $e) {
-            // If the Symfony filesystem failed, we can try with
-            // the legacy method which uses curl.
-            Tools14::copy($this->onlineDestinationRelease->getZipDownloadUrl(), $destPath);
-        }
-
-        return is_file($destPath);
+        $this->updateConfiguration = $updateConfiguration;
+        $this->filesystem = $filesystem;
+        $this->fileLoader = $fileLoader;
+        $this->distributionApiService = $distributionApiService;
+        $this->currentPsVersion = $currentPsVersion;
     }
 
     /**
@@ -105,29 +85,75 @@ class Upgrader
 
     /**
      * @throws DistributionApiException
-     * @throws UpgradeException
      */
     public function isNewerVersionAvailableOnline(): bool
     {
-        if ($this->getOnlineDestinationRelease() === null) {
+        $releaseOptions = $this->getOnlineDestinationReleases();
+        if (empty($releaseOptions)) {
             return false;
         }
 
-        return version_compare($this->currentPsVersion, $this->getOnlineDestinationRelease()->getVersion(), '<');
+        return true;
+    }
+
+    /**
+     * @throws DistributionApiException
+     */
+    public function getOnlineMaxDestinationRelease(): ?PrestashopRelease
+    {
+        return $this->getOnlineDestinationReleases()[PhpVersionResolverService::AVAILABLE_RELEASE_MAX] ?? null;
+    }
+
+    /**
+     * @return array<string, PrestaShopRelease>
+     *
+     * @throws DistributionApiException
+     */
+    public function getOnlineDestinationReleases(): array
+    {
+        if ($this->onlineDestinationReleases !== null) {
+            return $this->onlineDestinationReleases;
+        }
+        $this->onlineDestinationReleases = $this->phpVersionResolverService->getPrestashopDestinationReleases(PHP_VERSION_ID);
+
+        return $this->onlineDestinationReleases;
     }
 
     /**
      * @throws DistributionApiException
      * @throws UpgradeException
      */
-    public function getOnlineDestinationRelease(): ?PrestashopRelease
+    public function getOnlineDestinationRelease(): ?PrestaShopRelease
     {
-        if ($this->onlineDestinationRelease !== null) {
-            return $this->onlineDestinationRelease;
+        if ($this->updateConfiguration->isChannelOnline()) {
+            return !empty($this->getOnlineDestinationReleases()[PhpVersionResolverService::AVAILABLE_RELEASE_MAX])
+                ? $this->getOnlineDestinationReleases()[PhpVersionResolverService::AVAILABLE_RELEASE_MAX]
+                : null;
+        } elseif ($this->updateConfiguration->isChannelOnlineRecommended()) {
+            return !empty($this->getOnlineDestinationReleases()[PhpVersionResolverService::AVAILABLE_RELEASE_RECOMMENDED])
+                ? $this->getOnlineDestinationReleases()[PhpVersionResolverService::AVAILABLE_RELEASE_RECOMMENDED]
+                : null;
         }
-        $this->onlineDestinationRelease = $this->phpVersionResolverService->getPrestashopDestinationRelease(PHP_VERSION_ID);
 
-        return $this->onlineDestinationRelease;
+        return null;
+    }
+
+    public function getOnlineRecommendedDestinationRelease(): ?PrestashopRelease
+    {
+        $releases = $this->getOnlineDestinationReleases();
+
+        if (empty($releases[PhpVersionResolverService::AVAILABLE_RELEASE_RECOMMENDED])) {
+            return null;
+        }
+
+        $candidate = $releases[PhpVersionResolverService::AVAILABLE_RELEASE_RECOMMENDED];
+
+        if (version_compare($this->currentPsVersion, $candidate->getVersion(), '>=')) {
+            // Do not suggest if the available version is older
+            return null;
+        }
+
+        return $candidate;
     }
 
     /**
@@ -138,38 +164,64 @@ class Upgrader
      */
     public function getDestinationVersion(): ?string
     {
-        if ($this->upgradeConfiguration->isChannelLocal()) {
-            return $this->upgradeConfiguration->getLocalChannelVersion();
-        } else {
-            return $this->getOnlineDestinationRelease() ? $this->getOnlineDestinationRelease()->getVersion() : null;
+        if ($this->updateConfiguration->isChannelLocal()) {
+            return $this->updateConfiguration->getLocalChannelVersion();
+        } elseif ($this->updateConfiguration->isChannelOnline() || $this->updateConfiguration->isChannelOnlineRecommended()) {
+            $release = $this->getOnlineDestinationRelease();
+
+            if ($release) {
+                return $release->getVersion();
+            }
         }
+
+        return null;
     }
 
     /**
      * @throws UpgradeException
      */
-    public function getLatestModuleVersion(): string
+    public function getOnlineDestinationVersionForChannel(string $channel): ?string
     {
-        $fileLoader = new FileLoader();
-
-        $channelFile = $fileLoader->getXmlChannel();
-
-        if (empty($channelFile)) {
-            throw new UpgradeException('Unable to retrieve channel.xml.');
+        if ($channel === UpgradeConfiguration::CHANNEL_ONLINE) {
+            return $this->getOnlineMaxDestinationRelease() ? $this->getOnlineMaxDestinationRelease()->getVersion() : null;
+        } elseif ($channel === UpgradeConfiguration::CHANNEL_ONLINE_RECOMMENDED) {
+            return $this->getOnlineRecommendedDestinationRelease() ? $this->getOnlineRecommendedDestinationRelease()->getVersion() : null;
         }
 
-        return $channelFile->autoupgrade->last_version;
+        throw new UpgradeException(sprintf('Channel accepted: %s, %s', UpgradeConfiguration::CHANNEL_ONLINE, UpgradeConfiguration::CHANNEL_ONLINE_RECOMMENDED));
+    }
+
+    /**
+     * @throws DistributionApiException
+     * @throws UpgradeException
+     */
+    public function getLatestCompatibleModuleVersion(): string
+    {
+        $autoupgradeReleases = $this->distributionApiService->getAutoupgradeCompatibilities();
+
+        if (empty($autoupgradeReleases)) {
+            throw new UpgradeException($this->translator->trans('Unable to retrieve the recommended releases of Update Assistant.'));
+        }
+
+        $destinationVersion = $this->getDestinationVersion();
+
+        $eligibleAutoupgradeReleases = array_filter($autoupgradeReleases, function ($autoupgradeRelease) use ($destinationVersion) {
+            return $autoupgradeRelease->getPrestashopMinVersion() <= $destinationVersion && $autoupgradeRelease->getPrestashopMaxVersion() >= $destinationVersion;
+        });
+
+        $autoupgradeRelease = reset($eligibleAutoupgradeReleases);
+
+        return $autoupgradeRelease ? $autoupgradeRelease->getRecommendedVersion() : '';
     }
 
     /**
      * delete the file /config/xml/$version.xml if exists.
      */
-    public function clearXmlMd5File(string $version): bool
+    public function clearXmlMd5File(string $version): void
     {
-        if (file_exists(_PS_ROOT_DIR_ . '/config/xml/' . $version . '.xml')) {
-            return unlink(_PS_ROOT_DIR_ . '/config/xml/' . $version . '.xml');
+        $fileToRemove = _PS_ROOT_DIR_ . '/config/xml/' . $version . '.xml';
+        if ($this->filesystem->exists($fileToRemove)) {
+            $this->filesystem->remove($fileToRemove);
         }
-
-        return true;
     }
 }

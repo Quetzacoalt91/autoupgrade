@@ -1,4 +1,23 @@
-import Stepper from '../../src/ts/utils/Stepper';
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+import Stepper from '../../src/ts/appUI/utils/Stepper';
+import SpyInstance = jest.SpyInstance;
 
 const createMockStepperHTML = () => {
   document.body.innerHTML = `
@@ -18,25 +37,17 @@ const createMockStepperHTML = () => {
 };
 
 describe('Stepper', () => {
+  let debugSpy: SpyInstance;
+
   beforeEach(() => {
+    debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
     createMockStepperHTML();
-  });
-
-  it('should initialize stepper with all steps', () => {
-    const stepper = new Stepper();
-
-    expect(stepper['steps'].length).toBe(5);
-    expect(stepper['steps'][0].code).toBe('version-choice');
-    expect(stepper['steps'][1].code).toBe('update-options');
-    expect(stepper['steps'][2].code).toBe('backup');
-    expect(stepper['steps'][3].code).toBe('update');
-    expect(stepper['steps'][4].code).toBe('post-update');
   });
 
   it('should throw an error if the stepper is not found in the DOM', () => {
     document.body.innerHTML = '';
 
-    expect(() => new Stepper()).toThrow(
+    expect(() => new Stepper().setCurrentStep('backup')).toThrow(
       "The stepper wasn't found inside DOM. stepper can't be initiated properly"
     );
   });
@@ -44,7 +55,7 @@ describe('Stepper', () => {
   it('should throw an error if the stepper contains no steps', () => {
     document.body.innerHTML = '<div class="stepper" id="stepper_content"></div>';
 
-    expect(() => new Stepper()).toThrow(
+    expect(() => new Stepper().setCurrentStep('backup')).toThrow(
       "The stepper hasn't steps inside DOM. stepper can't be initiated properly"
     );
   });
@@ -52,7 +63,7 @@ describe('Stepper', () => {
   it('should throw an error if a step is missing the step code', () => {
     document.querySelector('[data-step-code="backup"]')?.removeAttribute('data-step-code');
 
-    expect(() => new Stepper()).toThrow(
+    expect(() => new Stepper().setCurrentStep('backup')).toThrow(
       "Step code is missing in one of the steps. stepper can't be initiated properly"
     );
   });
@@ -115,5 +126,31 @@ describe('Stepper', () => {
     expect(backupStep?.classList.contains('stepper__step--normal')).toBe(false);
     expect(updateStep?.classList.contains('stepper__step--normal')).toBe(false);
     expect(postUpdateStep?.classList.contains('stepper__step--normal')).toBe(true);
+  });
+
+  it('should not changer the stepper if the new active step is unknown', () => {
+    const stepper = new Stepper();
+
+    const checkStepsStatus = () => {
+      const versionChoiceStep = document.querySelector('[data-step-code="version-choice"]');
+      const updateOptionsStep = document.querySelector('[data-step-code="update-options"]');
+      const backupStep = document.querySelector('[data-step-code="backup"]');
+      const updateStep = document.querySelector('[data-step-code="update"]');
+      const postUpdateStep = document.querySelector('[data-step-code="post-update"]');
+
+      expect(versionChoiceStep?.classList.contains('stepper__step--done')).toBe(false);
+      expect(updateOptionsStep?.classList.contains('stepper__step--done')).toBe(false);
+      expect(backupStep?.classList.contains('stepper__step--done')).toBe(false);
+      expect(updateStep?.classList.contains('stepper__step--done')).toBe(false);
+      expect(postUpdateStep?.classList.contains('stepper__step--done')).toBe(false);
+    };
+
+    stepper.setCurrentStep('version-choice');
+    checkStepsStatus();
+
+    stepper.setCurrentStep('🐕');
+    checkStepsStatus();
+
+    expect(debugSpy).toHaveBeenCalledWith('Step 🐕 not found in list.');
   });
 });

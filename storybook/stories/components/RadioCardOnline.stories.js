@@ -4,7 +4,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -12,15 +12,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 import RadioCardOnline from "../../../views/templates/components/radio-card-online.html.twig";
@@ -32,12 +26,13 @@ export default {
 
 export const Online = {
   args: {
-    updateAssistantDocs: 
+    updateAssistantDocs:
       "https://devdocs.prestashop-project.org/8/basics/keeping-up-to-date/use-autoupgrade-module/",
     disabled: false,
     disabledMessage: "",
     form_options: {
       online_value: false,
+      online_recommended_value: false,
       local_value: false,
     },
     form_fields: {
@@ -53,11 +48,33 @@ export const Online = {
       badge_status: "major",
       release_note: "https://github.com/PrestaShop/autoupgrade",
       version: "9.0.0",
+      recommended: false,
+      message: 'The maximum version of PrestaShop to which you can update your store, based on its PHP version.',
     },
-    online_requirements: {
+    next_releases: {
+      online: {
+        badge_label: "Major version",
+        badge_status: "major",
+        release_note: "https://github.com/PrestaShop/autoupgrade",
+        version: "9.0.0",
+        recommended: false,
+        message: 'The maximum version of PrestaShop to which you can update your store, based on its PHP version.',
+      },
+      online_recommended: {
+        badge_label: "Minor version",
+        badge_status: "minor",
+        release_note: "https://github.com/PrestaShop/autoupgrade",
+        version: "8.2.3",
+        recommended: true,
+        message: 'The recommended version of PrestaShop to which you can update your store, based on its PHP version.',
+      },
+    },
+    requirements: {
       requirements_ok: true,
       errors: [],
       warnings: [],
     },
+    release_type: 'online',
+    form_option_online_value: 'online',
   },
 };

@@ -25,8 +25,9 @@
 
 import type { StorybookConfig } from "@sensiolabs/storybook-symfony-webpack5";
 import webpack from "webpack";
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 const config: StorybookConfig = {
   stories: ["../stories/**/*.stories.[tj]s", "../stories/**/*.mdx"],
@@ -35,16 +36,14 @@ const config: StorybookConfig = {
     "@storybook/addon-links",
     "@storybook/addon-essentials",
     "@storybook/addon-styling-webpack",
-    "@storybook/addon-a11y"
+    "@storybook/addon-a11y",
   ],
   framework: {
     name: "@sensiolabs/storybook-symfony-webpack5",
     options: {
       // 👇 Here configure the framework
       symfony: {
-        server: process.env.IS_IN_DOCKER
-          ? "http://storybook-php:8000"
-          : "http://localhost:8003",
+        server: process.env.PHP_URL || "http://localhost:8003",
         proxyPaths: ["/assets"],
         additionalWatchPaths: ["assets"],
       },
@@ -53,18 +52,40 @@ const config: StorybookConfig = {
   webpackFinal: async (config) => {
     config?.module?.rules?.push({
       test: /\.scss$/,
-      use: [
-        "style-loader",
-        "css-loader",
-        "sass-loader"
-      ],
+      use: ["style-loader", "css-loader", "sass-loader"],
     });
+    // Ensure shared component stories are transpiled.
+    config?.module?.rules?.push({
+      test: /\.ts$/,
+    });
+    if (config.resolve) {
+      // Add aliases
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        "@img": path.resolve(__dirname, "../../_dev/img"),
+        "@fonts": path.resolve(__dirname, "../../_dev/src/fonts"),
+      };
+
+      config.resolve.plugins = [
+        ...(config.resolve.plugins || []),
+        new TsconfigPathsPlugin({
+          extensions: config.resolve.extensions,
+          configFile: "../_dev/tsconfig.json",
+        }),
+      ];
+    }
     // List translations files on compilation to fill language selection list
     const newPlugin = new webpack.DefinePlugin({
       TRANSLATION_LOCALES: JSON.stringify(
-        fs.readdirSync(path.resolve(__dirname, '../../translations'))
-          .map((file) => new RegExp("^ModulesAutoupgradeAdmin.([a-z]+).xlf$", "i").exec(file)?.[1])
-          .filter((locale) => !!locale)
+        fs
+          .readdirSync(path.resolve(__dirname, "../../translations"))
+          .map(
+            (file) =>
+              new RegExp("^ModulesAutoupgradeAdmin.([a-z]+).xlf$", "i").exec(
+                file,
+              )?.[1],
+          )
+          .filter((locale) => !!locale),
       ),
     });
     if (config.plugins?.length) {
@@ -88,7 +109,7 @@ const config: StorybookConfig = {
         ${body}
     `,
   staticDirs: [
-    { from: "../../_dev/img", to: "/img"},
+    { from: "../../_dev/img", to: "/img" },
     "../public",
     "../node_modules/prestashop-bo-themes",
   ],

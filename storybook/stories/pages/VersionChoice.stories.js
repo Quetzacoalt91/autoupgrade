@@ -4,7 +4,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -12,15 +12,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 import VersionChoicePage from "../../../views/templates/pages/update.html.twig";
@@ -28,6 +22,7 @@ import { Online } from "../components/RadioCardOnline.stories";
 import { Local } from "../components/RadioCardLocal.stories";
 import { NoLocalArchive } from "../components/Alert.stories";
 import { VersionChoice as Stepper } from "../components/Stepper.stories";
+import { OnlineRecommended } from "../components/RadioCardOnlineRecommended.stories";
 
 export default {
   component: VersionChoicePage,
@@ -51,10 +46,14 @@ export const VersionChoice = {
     stepper_parent_id: "stepper_content",
     radio_card_online_parent_id: "radio_card_online",
     radio_card_archive_parent_id: "radio_card_archive",
+    radio_card_online_recommended_parent_id: "radio_card_online_recommended",
     form_route_to_save: "update-step-version-choice-save-form",
     form_route_to_submit: "update-step-version-choice-submit-form",
+    data_transparency_link:
+      "https://www.prestashop-project.org/data-transparency",
     // Radio cards
     ...Online.args,
+    ...OnlineRecommended.args,
     ...Local.args,
     // Stepper
     ...Stepper.args,

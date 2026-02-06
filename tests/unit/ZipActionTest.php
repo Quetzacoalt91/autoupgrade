@@ -5,7 +5,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -13,24 +13,22 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 use PHPUnit\Framework\TestCase;
 use PrestaShop\Module\AutoUpgrade\Progress\Backlog;
 use PrestaShop\Module\AutoUpgrade\UpgradeContainer;
+use Symfony\Component\Filesystem\Filesystem;
 
 class ZipActionTest extends TestCase
 {
-    const ZIP_CONTENT_PATH = __DIR__ . '/../fixtures/ArchiveExample.zip';
+    const ZIP_CONTENT_PATH = __DIR__ . '/../fixtures/ArchiveExample/ArchiveExample.zip';
+    const IDENTICAL_CONTENT_FILE_PATH = __DIR__ . '/../fixtures/ArchiveExample/dummyFolder/AppKernelExample.php.txt';
+    const NOT_IDENTICAL_CONTENT_FILE_PATH = __DIR__ . '/../fixtures/AppKernelExample.php.txt';
 
+    /** @var UpgradeContainer */
     private $container;
     private $contentExcepted;
 
@@ -41,7 +39,8 @@ class ZipActionTest extends TestCase
             'dummyFolder/AppKernelExample.php.txt',
         ];
 
-        $this->container = new UpgradeContainer(__DIR__, __DIR__ . '/..');
+        $rootDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid();
+        $this->container = new UpgradeContainer($rootDir, $rootDir . DIRECTORY_SEPARATOR . 'admin');
     }
 
     public function testArchiveContentWithZipArchive()
@@ -78,5 +77,79 @@ class ZipActionTest extends TestCase
                 "$completePath does not exist"
             );
         }
+    }
+
+    public function testIsFileUnchanged()
+    {
+        $zipAction = $this->container->getZipAction();
+
+        $zip = new ZipArchive();
+        $zip->open(self::ZIP_CONTENT_PATH);
+
+        $this->assertTrue($zipAction->isFileUnchanged(self::IDENTICAL_CONTENT_FILE_PATH, 'dummyFolder/AppKernelExample.php.txt', $zip));
+        $this->assertFalse($zipAction->isFileUnchanged(self::NOT_IDENTICAL_CONTENT_FILE_PATH, 'dummyFolder/AppKernelExample.php.txt', $zip));
+    }
+
+    public function testCompleteCompressionAndExtractionOfFiles()
+    {
+        $filesystem = new Filesystem();
+
+        // Create contents to be zipped and unzipped
+        $sourceFolder = $this->container->getProperty(UpgradeContainer::PS_ROOT_PATH);
+        $destinationFolder = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid();
+        $temporaryZipFile = tempnam(sys_get_temp_dir(), 'mod');
+
+        $filesystem->mkdir([
+            $sourceFolder,
+            $sourceFolder . DIRECTORY_SEPARATOR . 'folder/folder2',
+            $destinationFolder,
+        ]);
+        $filesystem->touch([
+            $sourceFolder . DIRECTORY_SEPARATOR . 'file1.txt',
+            $sourceFolder . DIRECTORY_SEPARATOR . 'file2.txt',
+            $sourceFolder . DIRECTORY_SEPARATOR . 'folder/file3.txt',
+        ]);
+        $filesystem->symlink(
+            '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'file2.txt',
+            $sourceFolder . DIRECTORY_SEPARATOR . 'folder/folder2/file4.txt'
+        );
+
+        $backlog = new Backlog([
+            $sourceFolder . DIRECTORY_SEPARATOR . 'file1.txt',
+            $sourceFolder . DIRECTORY_SEPARATOR . 'file2.txt',
+            $sourceFolder . DIRECTORY_SEPARATOR . 'folder/file3.txt',
+            $sourceFolder . DIRECTORY_SEPARATOR . 'folder/folder2/file4.txt',
+        ], 4);
+
+        // Run
+        $zipAction = $this->container->getZipAction();
+        $resultOfCompress = $zipAction->compress($backlog, $temporaryZipFile);
+        $resultOfExtract = $zipAction->extract($temporaryZipFile, $destinationFolder);
+
+        // Check
+        $this->assertTrue($resultOfCompress);
+        $this->assertTrue($resultOfExtract);
+
+        $this->assertTrue(is_dir($destinationFolder . DIRECTORY_SEPARATOR . 'folder'));
+        $this->assertTrue(is_dir($destinationFolder . DIRECTORY_SEPARATOR . 'folder/folder2'));
+
+        $this->assertTrue(is_file($destinationFolder . DIRECTORY_SEPARATOR . 'file1.txt'));
+        $this->assertTrue(is_file($destinationFolder . DIRECTORY_SEPARATOR . 'file2.txt'));
+        $this->assertTrue(is_file($destinationFolder . DIRECTORY_SEPARATOR . 'folder/file3.txt'));
+
+        $this->assertTrue(is_link($destinationFolder . DIRECTORY_SEPARATOR . 'folder/folder2/file4.txt'));
+        $this->assertSame(
+            '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'file2.txt',
+            readlink($destinationFolder . DIRECTORY_SEPARATOR . 'folder/folder2/file4.txt')
+        );
+    }
+
+    public function testCompressedFilesAreSimlinks()
+    {
+        $zipAction = $this->container->getZipAction();
+
+        $this->assertFalse($zipAction->isCompressedFileASymLink(2179792896, 'file.txt'));
+        $this->assertFalse($zipAction->isCompressedFileASymLink(2180841472, 'file.txt'));
+        $this->assertTrue($zipAction->isCompressedFileASymLink(2717843456, 'file.txt'));
     }
 }

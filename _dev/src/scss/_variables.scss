@@ -1,12 +1,30 @@
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
 $ua-id: "#update_assistant";
 $ua-prefix: "ua-";
 $cdk-prefix: "cdk-";
 
-/* CSS variables */
-/* Global variables to handle both theme */
-/* 9.0.0 */
+// CSS variables
+// Global variables to handle both theme
+// 9.0.0
 :root {
-  /* Primitive */
+  // Primitive
   --#{$ua-prefix}white: #ffffff;
   --#{$ua-prefix}black: #000000;
   --#{$ua-prefix}white-rgb: 255, 255, 255;
@@ -16,6 +34,7 @@ $cdk-prefix: "cdk-";
   --#{$ua-prefix}primary-600: var(--#{$cdk-prefix}primary-600, #5e5e5e);
   --#{$ua-prefix}primary-500: var(--#{$cdk-prefix}primary-500, #bbbbbb);
   --#{$ua-prefix}primary-400: var(--#{$cdk-prefix}primary-400, #dddddd);
+  --#{$ua-prefix}primary-300: var(--#{$cdk-prefix}primary-300, #eeeeee);
   --#{$ua-prefix}primary-200: var(--#{$cdk-prefix}primary-200, #f7f7f7);
   --#{$ua-prefix}purple-500: var(--#{$cdk-prefix}purple-500, #decde7);
   --#{$ua-prefix}purple-50: var(--#{$cdk-prefix}purple-50, #f8f0f7);
@@ -31,20 +50,25 @@ $cdk-prefix: "cdk-";
   --#{$ua-prefix}red-500: var(--#{$cdk-prefix}red-500, #ba151a);
   --#{$ua-prefix}red-50: var(--#{$cdk-prefix}red-50, #ffe4e6);
 
-  /* Global */
+  // Global
   --#{$ua-prefix}border-radius: 0;
   --#{$ua-prefix}base-text-color: var(--#{$ua-prefix}primary-800);
   --#{$ua-prefix}base-text-color-hover: var(--#{$ua-prefix}primary-700);
   --#{$ua-prefix}disabled-color: var(--#{$ua-prefix}primary-500);
   --#{$ua-prefix}border-color: var(--#{$ua-prefix}primary-400);
-  --#{$ua-prefix}box-shadow-modal: var(
+  --#{$ua-prefix}box-shadow-dialog: var(
     --#{$cdk-prefix}box-shadow-pop-modal,
     0 12px 24px rgb(0 0 0 / 0.1)
+  );
+  --#{$ua-prefix}box-shadow-md: var(
+    --#{$cdk-prefix}box-shadow-md,
+    0 4px 6px -1px rgb(29 29 27 / 0.2)
   );
   --#{$ua-prefix}required-color: var(--#{$ua-prefix}red-500);
   --#{$ua-prefix}primary: var(--#{$ua-prefix}primary-800);
   --#{$ua-prefix}primary-hover: var(--#{$ua-prefix}primary-700);
   --#{$ua-prefix}muted-background-color: var(--#{$ua-prefix}primary-200);
+  --#{$ua-prefix}font-family-prestafont: "Prestafont", sans-serif;
   --#{$ua-prefix}font-family-material-icons: var(
     --#{$cdk-prefix}font-family-material-icons,
     "Material Icons"
@@ -53,9 +77,14 @@ $cdk-prefix: "cdk-";
     --#{$cdk-prefix}default-transition-duration,
     0.15s
   );
-  --#{$ua-prefix}header-offset: 10rem;
+  --#{$ua-prefix}header-height: var(--#{$cdk-prefix}header-height, 3.25rem);
+  --#{$ua-prefix}header-offset: 11.25rem;
+  --#{$ua-prefix}header-offset-mobile: calc(var(--#{$ua-prefix}header-offset) - 1rem);
   --#{$ua-prefix}bo-background-color: var(--#{$ua-prefix}primary-200);
   --#{$ua-prefix}error-img-filter: none;
+  --#{$ua-prefix}scrollbar-thumb: var(--#{$ua-prefix}primary-500);
+  --#{$ua-prefix}scrollbar-thumb-hover: var(--#{$ua-prefix}primary-600);
+  --#{$ua-prefix}scrollbar-track: var(--#{$ua-prefix}primary-400);
 }
 
 // Update variable at body level
@@ -64,16 +93,22 @@ body {
     --#{$ua-prefix}bo-background-color: #eff1f2;
     --#{$ua-prefix}error-img-filter: invert(69%) sepia(66%) saturate(1340%) hue-rotate(151deg)
       brightness(88%) contrast(91%);
+    --#{$ua-prefix}header-height: 2.5rem;
+    --#{$ua-prefix}header-offset: 9rem;
+    --#{$ua-prefix}header-offset-mobile: calc(var(--#{$ua-prefix}header-offset) - 0.75rem);
   }
 
   &:has(.v1-7-3-0) {
     --#{$ua-prefix}bo-background-color: #eff1f2;
     --#{$ua-prefix}error-img-filter: invert(75%) sepia(64%) saturate(6023%) hue-rotate(161deg)
       brightness(96%) contrast(103%);
+    --#{$ua-prefix}header-height: 2.5rem;
+    --#{$ua-prefix}header-offset: 10rem;
+    --#{$ua-prefix}header-offset-mobile: calc(var(--#{$ua-prefix}header-offset) + 1rem);
   }
 }
 
-/* 1.7.8.0 */
+// 1.7.8.0
 .v1-7-8-0 {
   --#{$ua-prefix}border-radius: 0.5rem;
   --#{$ua-prefix}primary: #25b9d7;
@@ -89,7 +124,7 @@ body {
   --#{$ua-prefix}red-50: #fbc6c3;
 }
 
-/* 1.7.3.0 */
+// 1.7.3.0
 .v1-7-3-0 {
   --#{$ua-prefix}border-radius: 0.3125rem;
   --#{$ua-prefix}primary: #00aff0;

@@ -5,7 +5,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -13,15 +13,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\UpgradeTools\Module;
@@ -30,8 +24,8 @@ use Exception;
 use LogicException;
 use PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException;
 use PrestaShop\Module\AutoUpgrade\Log\Logger;
+use PrestaShop\Module\AutoUpgrade\Services\DownloadService;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Translator;
-use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 
 class ModuleDownloader
@@ -39,14 +33,18 @@ class ModuleDownloader
     /** @var Translator */
     private $translator;
 
+    /** @var DownloadService */
+    private $downloadService;
+
     /** @var Logger */
     private $logger;
 
     /** @var string */
     private $downloadFolder;
 
-    public function __construct(Translator $translator, Logger $logger, string $downloadFolder)
+    public function __construct(DownloadService $downloadService, Translator $translator, Logger $logger, string $downloadFolder)
     {
+        $this->downloadService = $downloadService;
         $this->translator = $translator;
         $this->logger = $logger;
         $this->downloadFolder = $downloadFolder;
@@ -74,12 +72,13 @@ class ModuleDownloader
         }
 
         if (!$downloadSuccessful) {
-            throw (new UpgradeException('All download attempts have failed. Check your environment and try again.'))->setSeverity(UpgradeException::SEVERITY_ERROR);
+            $message = $this->translator->trans('All download attempts have failed. The module %s has been disabled. You can try to update it manually afterwards.', [$moduleDownloaderContext->getModuleName()]);
+            throw (new UpgradeException($message))->setSeverity(UpgradeException::SEVERITY_WARNING);
         }
     }
 
     /**
-     * @throws IOException When copy fails
+     * @throws UpgradeException
      */
     private function attemptDownload(ModuleDownloaderContext $moduleDownloaderContext, int $index): void
     {
@@ -89,8 +88,8 @@ class ModuleDownloader
         $destinationPath = $this->downloadFolder;
 
         if ($moduleSource->isZipped()) {
-            $destinationPath .= '/' . $moduleDownloaderContext->getModuleName() . '.zip';
-            $filesystem->copy($moduleSource->getPath(), $destinationPath);
+            $destinationPath .= $moduleDownloaderContext->getModuleName() . '.zip';
+            $this->downloadService->downloadWithRetry($moduleSource->getPath(), $destinationPath);
         } else {
             // Module contents is already unzipped.
             // We move it first in the sandbox folder to make sure all the files can be read.

@@ -5,7 +5,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -13,15 +13,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 use PHPUnit\Framework\TestCase;
 use PrestaShop\Module\AutoUpgrade\ErrorHandler;
@@ -45,7 +39,7 @@ class ErrorHandlerTest extends TestCase
 
     public function testDefaultContentIsEmpty()
     {
-        $this->assertEmpty($this->logger->getErrors());
+        $this->assertEmpty($this->logger->getLogs());
     }
 
     public function testCheckExceptionAndContent()
@@ -58,34 +52,46 @@ class ErrorHandlerTest extends TestCase
         $this->errorHandler->exceptionHandler($exception);
         ob_end_clean();
 
-        $errors = $this->logger->getErrors();
-        $this->assertCount(1, $errors);
-        $this->assertContains('[INTERNAL] ' . __FILE__ . ' line ' . $line . ' - Exception: ERMAGHERD', end($errors));
+        $infos = $this->logger->getLogs();
+        $this->assertCount(1, $infos);
+        $this->assertContains(__FILE__ . ' line ' . $line . ' - Exception: ERMAGHERD', end($infos));
     }
 
     public function testWarningInErrorHandler()
     {
         $line = __LINE__;
         $this->errorHandler->errorHandler(E_WARNING, 'Trololo', __FILE__, $line);
-        $msgs = $this->logger->getInfos();
-        $this->assertCount(0, $this->logger->getErrors());
+        $msgs = $this->logger->getLogs();
         $this->assertCount(1, $msgs);
-        $this->assertSame(end($msgs), '[INTERNAL] ' . __FILE__ . ' line ' . $line . ' - Trololo');
+        $this->assertSame(end($msgs), 'WARNING - ' . __FILE__ . ' line ' . $line . ' - Trololo');
+    }
+
+    public function testAdminDirIsEscaped()
+    {
+        $this->logger->setSensitiveData(['my_admin' => '**admin_folder**']);
+
+        ob_start();
+        $this->errorHandler->exceptionHandler(new Exception('Open /store/my_admin/wololo.php'));
+        ob_get_clean();
+
+        $infos = $this->logger->getLogs();
+        $this->assertCount(1, $infos);
+        $this->assertNotContains('my_admin', end($infos));
     }
 
     /**
      * @dataProvider logProvider
      */
-    public function testGeneratedJsonLog($log)
+    public function testGeneratedJsonLog($log, $type)
     {
-        $this->assertNotNull(json_decode($this->errorHandler->generateJsonLog($log)));
+        $this->assertNotNull(json_decode($this->errorHandler->generateJsonLog($log, $type)));
     }
 
     public function logProvider()
     {
         return [
-            ["[INTERNAL] /var/www/html/modules/autoupgrade/classes/Task/Upgrade/BackupFiles.php line 55 - Class 'PrestaShop\Module\AutoUpgrade\Task\Upgrade\UpgradeContainer' not found"],
-            ["[INTERNAL] /var/www/html/modules/autoupgrade/classes/Task/Upgrade/BackupDb.php line 105 - Can't use method return value in write context"],
+            ["/var/www/html/modules/autoupgrade/classes/Task/Upgrade/BackupFiles.php line 55 - Class 'PrestaShop\Module\AutoUpgrade\Task\Upgrade\UpgradeContainer' not found", 'WARNING'],
+            ["/var/www/html/modules/autoupgrade/classes/Task/Upgrade/BackupDb.php line 105 - Can't use method return value in write context", 'ALERT'],
         ];
     }
 }

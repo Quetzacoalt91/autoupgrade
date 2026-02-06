@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Log;
@@ -44,7 +38,7 @@ abstract class Logger implements LoggerInterface
     /**
      * @var string[]
      */
-    protected static $levels = [
+    public static $levels = [
         self::DEBUG => 'DEBUG',
         self::INFO => 'INFO',
         self::NOTICE => 'NOTICE',
@@ -135,23 +129,12 @@ abstract class Logger implements LoggerInterface
     }
 
     /**
-     * Equivalent of the old $nextErrors
-     * Used during upgrade. Will be displayed in the top right panel (not visible at the beginning).
-     *
-     * @return string[] Details of error which occured during the request. Verbose levels: ERROR
-     */
-    public function getErrors(): array
-    {
-        return [];
-    }
-
-    /**
      * Equivalent of the old $nextQuickInfo
      * Used during upgrade. Will be displayed in the lower panel.
      *
      * @return string[] Details on what happened during the execution. Verbose levels: DEBUG / INFO / WARNING
      */
-    public function getInfos(): array
+    public function getLogs(): array
     {
         return [];
     }
@@ -175,9 +158,36 @@ abstract class Logger implements LoggerInterface
      */
     public function log($level, string $message, array $context = []): void
     {
+        $className = $this->getCallingClass();
+
         if (is_resource($this->fd)) {
-            fwrite($this->fd, '[' . date('Y-m-d H:i:s') . '] ' . self::$levels[$level] . ' - ' . $message . PHP_EOL);
+            fwrite(
+                $this->fd,
+                '[' . date('Y-m-d H:i:s') . '] ' . self::$levels[$level] . ' - ' .
+                ($className ? $className . ' - ' : '') .
+                $message . PHP_EOL
+            );
         }
+    }
+
+    /**
+     * Get the name of the class that called the logger.
+     */
+    private function getCallingClass(): ?string
+    {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 8);
+
+        foreach ($trace as $frame) {
+            if (
+                isset($frame['class']) &&
+                strpos($frame['class'], __NAMESPACE__) === false
+            ) {
+                // Extract the class name without the namespace
+                return substr(strrchr($frame['class'], '\\') ?: $frame['class'], 1);
+            }
+        }
+
+        return null;
     }
 
     /**

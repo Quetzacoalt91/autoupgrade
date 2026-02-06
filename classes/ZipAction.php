@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade;
@@ -32,6 +26,7 @@ use PrestaShop\Module\AutoUpgrade\Log\LoggerInterface;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
 use PrestaShop\Module\AutoUpgrade\Progress\Backlog;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Translator;
+use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 use ZipArchive;
 
@@ -57,18 +52,23 @@ class ZipAction
     private $translator;
 
     /**
+     * @var Filesystem
+     */
+    private $filesystem;
+
+    /**
      * @var string Path to the shop, in order to remove it from the archived file paths
      */
     private $prodRootDir;
 
-    public function __construct(Translator $translator, LoggerInterface $logger, UpgradeConfiguration $configuration, string $prodRootDir)
+    public function __construct(Filesystem $filesystem, Translator $translator, LoggerInterface $logger, UpgradeConfiguration $updateConfiguration, string $prodRootDir)
     {
+        $this->filesystem = $filesystem;
         $this->translator = $translator;
         $this->logger = $logger;
         $this->prodRootDir = $prodRootDir;
-
-        $this->configMaxNbFilesCompressedInARow = $configuration->getNumberOfFilesPerCall();
-        $this->configMaxFileSizeAllowed = $configuration->getMaxFileToBackup();
+        $this->configMaxNbFilesCompressedInARow = $updateConfiguration->getNumberOfFilesPerCall();
+        $this->configMaxFileSizeAllowed = $updateConfiguration->getMaxFileToBackup();
     }
 
     /**
@@ -91,15 +91,23 @@ class ZipAction
                 continue;
             }
 
-            if (!$zip->addFile($file, $archiveFilename)) {
+            if (is_link($file)) {
+                $result = $this->addSymlink($file, $archiveFilename, $zip);
+            } else {
+                $result = $zip->addFile($file, $archiveFilename);
+            }
+
+            if (!$result) {
+                $error = $zip->getStatusString();
                 // if an error occur, it's more safe to delete the corrupted backup
                 $zip->close();
-                (new Filesystem())->remove($toFile);
+                $this->filesystem->remove($toFile);
                 $this->logger->error($this->translator->trans(
-                    'Error when trying to add %filename% to archive %archive%.',
+                    'Unable to add %filename% to archive %archive%: %error%',
                     [
                         '%filename%' => $file,
                         '%archive%' => $archiveFilename,
+                        '%error%' => $error,
                     ]
                 ));
 
@@ -116,15 +124,32 @@ class ZipAction
         }
 
         if (!$zip->close()) {
+            $error = $zip->getStatusString();
+
             $this->logger->error($this->translator->trans(
-                'Could not close the Zip file: %toFile% properly. Check you are allowed to write on the disk and there is available space on it.',
-                ['%toFile%' => $toFile]
+                'Could not close the Zip file %toFile%: %error%',
+                [
+                    '%toFile%' => $toFile,
+                    '%error%' => $error,
+                ]
             ));
 
             return false;
         }
 
         return true;
+    }
+
+    private function addSymlink(string $file, string $archiveFilename, ZipArchive $zip): bool
+    {
+        $targetPath = readlink($file);
+        $stat = lstat($file);
+
+        return $zip->addFromString($archiveFilename, $targetPath)
+            && $zip->setExternalAttributesName($archiveFilename,
+                ZipArchive::OPSYS_UNIX,
+                $stat['mode'] << 16
+            );
     }
 
     /**
@@ -141,14 +166,14 @@ class ZipAction
             return false;
         }
 
-        if (!file_exists($to_dir)) {
-            // ToDo: Use Filesystem from Symfony
-            if (!mkdir($to_dir)) {
+        if (!$this->filesystem->exists($to_dir)) {
+            try {
+                $this->filesystem->mkdir($to_dir, 0775);
+            } catch (IOException $exception) {
                 $this->logger->error($this->translator->trans('Unable to create directory %s.', [$to_dir]));
 
                 return false;
             }
-            chmod($to_dir, 0775);
         }
 
         try {
@@ -157,12 +182,55 @@ class ZipAction
             return false;
         }
 
+        /** @var int[] */
+        $deferredLinks = [];
+
         for ($i = 0; $i < $zip->numFiles; ++$i) {
-            if (!$zip->extractTo($to_dir, [$zip->getNameIndex($i)])) {
-                $this->logger->error(
+            $nameIndex = $zip->getNameIndex($i);
+            $zip->getExternalAttributesName($nameIndex, $opsys, $stat);
+
+            if ($opsys === ZipArchive::OPSYS_UNIX && $this->isCompressedFileASymLink($stat, $nameIndex)) {
+                $deferredLinks[] = $i;
+            } elseif (!$zip->extractTo($to_dir, [$nameIndex])) {
+                $issue = $zip->getStatusString() ?: $this->translator->trans('Unknown extraction error (possible permission issue or filesystem error)');
+
+                $fullDiskPath = rtrim($to_dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $nameIndex;
+                $isFileUnchanged = $this->isFileUnchanged($fullDiskPath, $nameIndex, $zip);
+
+                $nonCriticalIssueNotice = $isFileUnchanged ? $this->translator->trans(', but ignoring as source and destination appear identical') : '';
+
+                $this->logger->warning(
                     $this->translator->trans(
-                        'Could not extract %file% from backup, the destination might not be writable.',
-                        ['%file%' => $zip->statIndex($i)['name']]
+                        'Could not extract %file% from archive%nonCriticalIssueNotice%: %$issue%.',
+                        [
+                            '%file%' => $nameIndex,
+                            '%nonCriticalIssueNotice%' => $nonCriticalIssueNotice,
+                            '%$issue%' => $issue,
+                        ]
+                    )
+                );
+
+                if (!$isFileUnchanged) {
+                    $zip->close();
+
+                    return false;
+                }
+            }
+        }
+
+        foreach ($deferredLinks as $i) {
+            $nameIndex = $zip->getNameIndex($i);
+
+            try {
+                $this->filesystem->symlink($zip->getFromIndex($i), $to_dir . DIRECTORY_SEPARATOR . $nameIndex);
+            } catch (IOException $e) {
+                $this->logger->warning(
+                    $this->translator->trans(
+                        'Could not extract link %file% from archive: %error%',
+                        [
+                            '%file%' => $nameIndex,
+                            '%error%' => $e->getMessage(),
+                        ]
                     )
                 );
                 $zip->close();
@@ -186,14 +254,14 @@ class ZipAction
      */
     public function listContent(string $zipFile): array
     {
-        if (!file_exists($zipFile)) {
+        if (!$this->filesystem->exists($zipFile)) {
             return [];
         }
 
         try {
             $zip = $this->open($zipFile);
         } catch (ZipActionException $e) {
-            $this->logger->error($this->translator->trans('[ERROR] Unable to list archived files'));
+            $this->logger->error($this->translator->trans('Unable to list archived files'));
 
             return [];
         }
@@ -204,6 +272,65 @@ class ZipAction
         }
 
         return $files;
+    }
+
+    /**
+     * Open an archive
+     *
+     * @param string $zipFile Path to the archive
+     * @param int|null $flags ZipArchive flags
+     *
+     * @throws ZipActionException
+     */
+    public function open(string $zipFile, ?int $flags = null): ZipArchive
+    {
+        $zip = new ZipArchive();
+        if (null === $flags) {
+            $flags = 0;
+        }
+        if ($zip->open($zipFile, $flags) !== true || empty($zip->filename)) {
+            $error = $zip->getStatusString();
+
+            $this->logger->error($this->translator->trans('Unable to open archive %s: %s', [$zipFile, $error]));
+            throw new ZipActionException('Unable to open archive ' . $zipFile . ': ' . $error);
+        }
+
+        return $zip;
+    }
+
+    /**
+     * @throws ZipActionException
+     */
+    public function extractFileFromArchive(ZipArchive $zip, string $fileName): string
+    {
+        $fileIndex = $zip->locateName($fileName);
+        if ($fileIndex !== false) {
+            return $zip->getFromIndex($fileIndex);
+        }
+        throw new ZipActionException("Unable to find $fileName file");
+    }
+
+    /**
+     * Determines whether a file on disk is identical to its counterpart in a ZIP archive.
+     *
+     * This method compares the MD5 hash of the file content extracted from the ZIP archive
+     * with the MD5 hash of the file located on the given disk path. If the file does not exist
+     * on disk, the comparison will return false.
+     *
+     * @param string $diskFilePath absolute path to the file on disk
+     * @param string $nameIndex the name of the file inside the ZIP archive
+     * @param ZipArchive $zip the ZipArchive instance containing the file to compare
+     *
+     * @return bool returns true if the file on disk is unchanged (identical content),
+     *              false if it is different or does not exist
+     */
+    public function isFileUnchanged(string $diskFilePath, string $nameIndex, ZipArchive $zip): bool
+    {
+        $zipFileContent = $zip->getFromName($nameIndex);
+        $md5FromZip = md5($zipFileContent);
+        $md5FromDisk = is_file($diskFilePath) ? md5_file($diskFilePath) : null;
+
+        return $md5FromZip === $md5FromDisk;
     }
 
     /**
@@ -242,37 +369,13 @@ class ZipAction
         return $pass;
     }
 
-    /**
-     * Open an archive
-     *
-     * @param string $zipFile Path to the archive
-     * @param int|null $flags ZipArchive flags
-     *
-     * @throws ZipActionException
+    /*
+     * Detect files stored as symlinks. Matches octal value 12000 and does not end with a separator
+     * @see https://discuss.python.org/t/how-info-zip-represents-symlinks/4104/2
+     * @see https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT - 4.5.7 -UNIX Extra Field (0x000d):
      */
-    public function open(string $zipFile, int $flags = null): ZipArchive
+    public function isCompressedFileASymLink(int $stat, string $file): bool
     {
-        $zip = new ZipArchive();
-        if (null === $flags) {
-            $flags = 0;
-        }
-        if ($zip->open($zipFile, $flags) !== true || empty($zip->filename)) {
-            $this->logger->error($this->translator->trans('Unable to open zipFile %s', [$zipFile]));
-            throw new ZipActionException('Unable to open zipFile ' . $zipFile);
-        }
-
-        return $zip;
-    }
-
-    /**
-     * @throws ZipActionException
-     */
-    public function extractFileFromArchive(ZipArchive $zip, string $fileName): string
-    {
-        $fileIndex = $zip->locateName($fileName);
-        if ($fileIndex !== false) {
-            return $zip->getFromIndex($fileIndex);
-        }
-        throw new ZipActionException("Unable to find $fileName file");
+        return (($stat >> 16) & 0120000) === 0120000 && !in_array(substr($file, -1), ['/', '\\']);
     }
 }

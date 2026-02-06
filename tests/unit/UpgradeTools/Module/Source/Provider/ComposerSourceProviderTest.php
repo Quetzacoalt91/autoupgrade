@@ -5,7 +5,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -13,31 +13,26 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 use PHPUnit\Framework\TestCase;
-use PrestaShop\Module\AutoUpgrade\Parameters\FileConfigurationStorage;
+use PrestaShop\Module\AutoUpgrade\Parameters\FileStorage;
 use PrestaShop\Module\AutoUpgrade\Services\ComposerService;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Module\Source\ModuleSource;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Module\Source\Provider\ComposerSourceProvider;
+use Symfony\Component\Filesystem\Filesystem;
 
 class ComposerSourceProviderTest extends TestCase
 {
     public function testCacheGenerationWithData()
     {
         $prestashopContents = realpath(__DIR__ . '/../../../../../fixtures/prestashop-release');
-        $fileConfigurationStorageMock = $this->createMock(FileConfigurationStorage::class);
+        $fileConfigurationStorageMock = $this->createMock(FileStorage::class);
 
-        $sourceProvider = new ComposerSourceProvider($prestashopContents, new ComposerService(), $fileConfigurationStorageMock);
+        $sourceProvider = new ComposerSourceProvider($prestashopContents, new ComposerService(new Filesystem()), $fileConfigurationStorageMock);
 
         $fileConfigurationStorageMock->expects($this->once())->method('exists');
         $fileConfigurationStorageMock->expects($this->once())->method('save');
@@ -56,9 +51,9 @@ class ComposerSourceProviderTest extends TestCase
     {
         // root project composer.lock
         $prestashopContents = realpath(__DIR__ . '/../../../../../../');
-        $fileConfigurationStorageMock = $this->createMock(FileConfigurationStorage::class);
+        $fileConfigurationStorageMock = $this->createMock(FileStorage::class);
 
-        $sourceProvider = new ComposerSourceProvider($prestashopContents, new ComposerService(), $fileConfigurationStorageMock);
+        $sourceProvider = new ComposerSourceProvider($prestashopContents, new ComposerService(new Filesystem()), $fileConfigurationStorageMock);
 
         $fileConfigurationStorageMock->expects($this->once())->method('exists');
         $fileConfigurationStorageMock->expects($this->once())->method('save');
@@ -71,11 +66,11 @@ class ComposerSourceProviderTest extends TestCase
     public function testCacheLoading()
     {
         $prestashopContents = realpath(__DIR__ . '/../../../../../prestashop-release');
-        $fileConfigurationStorageMock = $this->createMock(FileConfigurationStorage::class);
+        $fileConfigurationStorageMock = $this->createMock(FileStorage::class);
         $fileConfigurationStorageMock->method('exists')->willReturn(true);
         $fileConfigurationStorageMock->method('load')->willReturn([]);
 
-        $sourceProvider = new ComposerSourceProvider($prestashopContents, new ComposerService(), $fileConfigurationStorageMock);
+        $sourceProvider = new ComposerSourceProvider($prestashopContents, new ComposerService(new Filesystem()), $fileConfigurationStorageMock);
 
         $fileConfigurationStorageMock->expects($this->once())->method('exists');
         $fileConfigurationStorageMock->expects($this->once())->method('load');

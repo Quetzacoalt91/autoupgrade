@@ -1,3 +1,21 @@
+{#**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ *#}
 {% extends "@ModuleAutoUpgrade/layouts/step-content.html.twig" %}
 
 {% set form_version_choice_name = 'version_choice' %}
@@ -28,18 +46,20 @@
       </p>
 
       <p class="up-to-date__message">
-        {{ 'Current PrestaShop version:'|trans({}) }}
-        {{ current_prestashop_version }}
+        {{ 'Current PrestaShop version: %currentPrestashopVersion%'|trans({
+          '%currentPrestashopVersion%': current_prestashop_version
+        }) }}
         <br />
-        {{ 'Current PHP version:'|trans({}) }}
-        {{ current_php_version }}
+        {{ 'Current PHP version: %currentPhpVersion%'|trans({
+          '%currentPhpVersion%': current_php_version
+        }) }}
       </p>
     </div>
 
     {% if no_local_archive %}
       {% include "@ModuleAutoUpgrade/components/alert.html.twig" with {
         message: "Unlock the local update feature and manually update your store to your preferred upgrade by saving the archive and XML files of the PrestaShop version in the following directory on your server: %pathToLocalArchive%"|trans({
-          '%pathToLocalArchive%': '<b>/admin/autoupgrade/download/</b>'
+          '%pathToLocalArchive%': '<b>/your-admin-directory/autoupgrade/download/</b>'
         })|raw,
         alertStatus: "info",
       } %}
@@ -68,21 +88,23 @@
       </p>
 
       <p class="not-up-to-date__message">
-        {{ 'Current PrestaShop version:'|trans({}) }}
-        {{ current_prestashop_version }}
+        {{ 'Current PrestaShop version: %currentPrestashopVersion%'|trans({
+          '%currentPrestashopVersion%': current_prestashop_version
+        }) }}
         <br />
-        {{ 'Current PHP version:'|trans({}) }}
-        {{ current_php_version }}
+        {{ 'Current PHP version: %currentPhpVersion%'|trans({
+          '%currentPhpVersion%': current_php_version
+        }) }}
       </p>
 
       {% if not no_local_archive %}
         <p>
           <strong>
-            {{ 'Select version:'|trans({}) }}
+            {{ 'Select version'|trans({}) }}
           </strong>
         </p>
 
-        <p>
+        <p class="mb-2">
           {{ 'A more recent version of PrestaShop is available. You can also use a local archive.'|trans({}) }}
         </p>
       {% endif %}
@@ -96,14 +118,30 @@
       id="{{ form_version_choice_name }}"
       name="{{ form_version_choice_name }}"
     >
-      <div id="{{ radio_card_online_parent_id }}">
-        {% include "@ModuleAutoUpgrade/components/radio-card-online.html.twig" %}
-      </div>
+      {% if next_releases['online_recommended'] is defined and next_releases['online_recommended'] is not empty %}
+        <div id="{{ radio_card_online_recommended_parent_id }}">
+          {% include "@ModuleAutoUpgrade/components/radio-card-online.html.twig" with {
+            form_option_online_value: form_options.online_recommended_value,
+            next_release: next_releases['online_recommended'],
+            release_type: 'online_recommended'
+          } %}
+        </div>
+      {% endif %}
 
+      {% if next_releases['online'] is defined and next_releases['online'] is not empty %}
+        <div id="{{ radio_card_online_parent_id }}">
+          {% include "@ModuleAutoUpgrade/components/radio-card-online.html.twig" with {
+            form_option_online_value: form_options.online_value,
+            next_release: next_releases['online'],
+            release_type: 'online'
+          } %}
+        </div>
+      {% endif %}
+      
       {% if no_local_archive %}
         {% include "@ModuleAutoUpgrade/components/alert.html.twig" with {
           message: "Unlock the local update feature and manually update your store to your preferred upgrade by saving the archive and XML files of the PrestaShop version in the following directory on your server: %pathToLocalArchive%"|trans({
-            '%pathToLocalArchive%': '<b>/admin/autoupgrade/download/</b>'
+            '%pathToLocalArchive%': '<b>/your-admin-directory/autoupgrade/download/</b>'
           })|raw,
           alertStatus: "info",
         } %}

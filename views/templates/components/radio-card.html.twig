@@ -1,3 +1,21 @@
+{#**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ *#}
 <label class="radio-card {% if disabled %} radio-card--disabled {% endif %}"
   {% if radioCardId %} for="{{ radioCardId }}" {% endif %}>
   {% if disabledMessage %}
@@ -17,7 +35,7 @@
       {% if disabled %} disabled {% endif %}
       {% if checked and not disabled %} checked {% endif %}
       {% if required %} required {% endif %}
-      {% if requirements and requirements.requirements_ok %}data-requirements-are-ok="1"{% endif %}
+      {% if requirements and requirements.requirements_ok %} data-requirements-are-ok="1" {% endif %}
     />
   </div>
 
@@ -31,6 +49,11 @@
             {{ badgeLabel }}
           </span>
         {% endif %}
+        {% if recommended %}
+          <span class="radio-card__badge">
+            {{ 'Recommended'|trans({}) }}
+          </span>
+        {% endif %}
       </p>
 
       {% if releaseNote %}
@@ -39,7 +62,7 @@
           target="_blank"
           rel="noopener"
         >
-          Release note
+          {{ 'Release note'|trans({}) }}
           <i class="material-icons">open_in_new</i>
         </a>
       {% endif %}

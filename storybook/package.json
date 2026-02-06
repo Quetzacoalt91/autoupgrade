@@ -1,4 +1,9 @@
 {
+    "author": {
+        "name": "PrestaShop SA",
+        "email": "contact@prestashop.com"
+    },
+    "license": "AFL-3.0",
     "devDependencies": {
         "@sensiolabs/storybook-symfony-webpack5": "file:vendor/sensiolabs/storybook-bundle/storybook",
         "@storybook/addon-a11y": "^8.4.1",
@@ -14,6 +19,7 @@
         "sass": "^1.78.0",
         "sass-loader": "^16.0.1",
         "style-loader": "^4.0.0",
+        "tsconfig-paths-webpack-plugin": "^4.2.0",
         "typescript": "^5.4.2",
         "webpack": "^5.90.3"
     },

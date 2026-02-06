@@ -5,7 +5,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -13,15 +13,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 use PHPUnit\Framework\TestCase;
@@ -29,6 +23,7 @@ use PrestaShop\Module\AutoUpgrade\Log\Logger;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Module\ModuleMigration;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Module\ModuleMigrationContext;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Translator;
+use Symfony\Component\Filesystem\Filesystem;
 
 class ModuleMigrationTest extends TestCase
 {
@@ -59,10 +54,10 @@ class ModuleMigrationTest extends TestCase
         }
 
         if (!defined('_PS_MODULE_DIR_')) {
-            define('_PS_MODULE_DIR_', __DIR__ . '/../../../fixtures/');
+            define('_PS_MODULE_DIR_', __DIR__ . '/../../../fixtures/modules/');
         }
 
-        require_once _PS_MODULE_DIR_ . '/Module.php';
+        require_once _PS_MODULE_DIR_ . '/../Module.php';
         require_once _PS_MODULE_DIR_ . '/mymodule/mymodule.php';
 
         $translator = $this->createMock(Translator::class);
@@ -72,7 +67,7 @@ class ModuleMigrationTest extends TestCase
             });
 
         $this->logger = $this->createMock(Logger::class);
-        $this->moduleMigration = new ModuleMigration($translator, $this->logger, self::$fixtureFolder);
+        $this->moduleMigration = new ModuleMigration(new Filesystem(), $translator, $this->logger, self::$fixtureFolder);
     }
 
     public function testNeedMigrationWithSameVersion()
@@ -116,7 +111,7 @@ class ModuleMigrationTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('notice')
-            ->with('No version present in database for module mymodule, all files for upgrade will be applied.');
+            ->with('No version present in database for module mymodule, all files for update will be applied.');
 
         $this->moduleMigration->listUpgradeFiles($moduleMigrationContext);
     }
@@ -151,9 +146,9 @@ class ModuleMigrationTest extends TestCase
         $moduleMigrationContext = new ModuleMigrationContext($mymodule, $dbVersion);
 
         $this->assertEquals([
-            __DIR__ . '/../../../fixtures/mymodule/upgrade/install-1.0.1.php',
-            __DIR__ . '/../../../fixtures/mymodule/upgrade/upgrade-1.0.2.php',
-            __DIR__ . '/../../../fixtures/mymodule/upgrade/upgrade-1.1.php',
+            __DIR__ . '/../../../fixtures/modules/mymodule/upgrade/install-1.0.1.php',
+            __DIR__ . '/../../../fixtures/modules/mymodule/upgrade/upgrade-1.0.2.php',
+            __DIR__ . '/../../../fixtures/modules/mymodule/upgrade/upgrade-1.1.php',
         ], $this->moduleMigration->listUpgradeFiles($moduleMigrationContext));
     }
 
@@ -204,7 +199,7 @@ class ModuleMigrationTest extends TestCase
         $this->moduleMigration->needMigration($moduleMigrationContext);
 
         $this->expectException(\PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException::class);
-        $this->expectExceptionMessage('[WARNING] Method mymodule_upgrade_module_1_2_0 does not exist. Module mymodule disabled.');
+        $this->expectExceptionMessage('Method mymodule_upgrade_module_1_2_0 does not exist. Module mymodule disabled.');
 
         $this->moduleMigration->runMigration($moduleMigrationContext);
     }
@@ -220,7 +215,7 @@ class ModuleMigrationTest extends TestCase
         $this->moduleMigration->needMigration($moduleMigrationContext);
 
         $this->expectException(\PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException::class);
-        $this->expectExceptionMessage('[WARNING] Migration failed while running the file upgrade-1.2.1.php. Module mymodule disabled.');
+        $this->expectExceptionMessage('Migration failed while running the file upgrade-1.2.1.php. Module mymodule disabled.');
 
         $this->moduleMigration->runMigration($moduleMigrationContext);
     }
@@ -236,7 +231,7 @@ class ModuleMigrationTest extends TestCase
         $this->moduleMigration->needMigration($moduleMigrationContext);
 
         $this->expectException(\PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException::class);
-        $this->expectExceptionMessage('[WARNING] Unexpected error when trying to upgrade module mymodule. Module mymodule disabled.');
+        $this->expectExceptionMessage('Unexpected issue when trying to upgrade module mymodule. Module mymodule disabled.');
 
         $this->moduleMigration->runMigration($moduleMigrationContext);
     }
@@ -262,7 +257,7 @@ class ModuleMigrationTest extends TestCase
         $moduleMigrationContext = new ModuleMigrationContext($mymodule, $dbVersion);
 
         $this->expectException(\PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException::class);
-        $this->expectExceptionMessage('[WARNING] Module mymodule version could not be updated. Database might be unavailable.');
+        $this->expectExceptionMessage('Module mymodule version could not be updated. Database might be unavailable.');
 
         $this->assertNull($this->moduleMigration->saveVersionInDb($moduleMigrationContext));
     }

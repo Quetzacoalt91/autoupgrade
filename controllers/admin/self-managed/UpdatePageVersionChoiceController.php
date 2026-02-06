@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,31 +14,24 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Controller;
 
 use Exception;
 use PrestaShop\Module\AutoUpgrade\AjaxResponseBuilder;
+use PrestaShop\Module\AutoUpgrade\DocumentationLinks;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
-use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeFileNames;
 use PrestaShop\Module\AutoUpgrade\Router\Routes;
-use PrestaShop\Module\AutoUpgrade\Services\DistributionApiService;
-use PrestaShop\Module\AutoUpgrade\Services\PhpVersionResolverService;
+use PrestaShop\Module\AutoUpgrade\Task\TaskType;
 use PrestaShop\Module\AutoUpgrade\Twig\PageSelectors;
-use PrestaShop\Module\AutoUpgrade\Twig\UpdateSteps;
+use PrestaShop\Module\AutoUpgrade\Twig\Steps\Stepper;
+use PrestaShop\Module\AutoUpgrade\Twig\Steps\UpdateSteps;
 use PrestaShop\Module\AutoUpgrade\Twig\ValidatorToFormFormater;
 use PrestaShop\Module\AutoUpgrade\UpgradeContainer;
-use PrestaShop\Module\AutoUpgrade\UpgradeSelfCheck;
 use PrestaShop\Module\AutoUpgrade\VersionUtils;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
@@ -53,6 +46,7 @@ class UpdatePageVersionChoiceController extends AbstractPageWithStepController
     ];
     const FORM_OPTIONS = [
         'online_value' => UpgradeConfiguration::CHANNEL_ONLINE,
+        'online_recommended_value' => UpgradeConfiguration::CHANNEL_ONLINE_RECOMMENDED,
         'local_value' => UpgradeConfiguration::CHANNEL_LOCAL,
     ];
 
@@ -72,24 +66,89 @@ class UpdatePageVersionChoiceController extends AbstractPageWithStepController
     }
 
     /**
-     * @return array
+     * @return array<string, mixed>
      *
      * @throws \Exception
      */
     protected function getParams(): array
     {
-        $updateSteps = new UpdateSteps($this->upgradeContainer->getTranslator());
+        $updateSteps = new Stepper($this->upgradeContainer->getTranslator(), TaskType::TASK_TYPE_UPDATE);
         $isNewerVersionAvailableOnline = $this->upgradeContainer->getUpgrader()->isNewerVersionAvailableOnline();
-        $onlineDestination = $this->upgradeContainer->getUpgrader()->getOnlineDestinationRelease();
+        $recommendedOnlineDestination = null;
+        $maxOnlineDestination = null;
+        $nextReleases = [];
 
         if ($isNewerVersionAvailableOnline) {
-            $updateType = VersionUtils::getUpdateType($this->getPsVersion(), $onlineDestination->getVersion());
-            $releaseNote = $this->upgradeContainer->getUpgrader()->getOnlineDestinationRelease()->getReleaseNoteUrl();
-        } else {
-            $updateType = null;
-            $releaseNote = null;
+            $recommendedOnlineDestination = $this->upgradeContainer->getUpgrader()->getOnlineRecommendedDestinationRelease();
+
+            if ($recommendedOnlineDestination) {
+                $recommendedOnlineDestinationUpdateType = VersionUtils::getUpdateType($this->getPsVersion(), $recommendedOnlineDestination->getVersion());
+                $recommendedOnlineDestinationReleaseNote = $this->upgradeContainer->getUpgrader()->getOnlineRecommendedDestinationRelease()->getReleaseNoteUrl();
+                $recommendedUpdateLabel = $this->getUpdateTypeLabel($recommendedOnlineDestinationUpdateType);
+                $nextReleases['online_recommended'] = [
+                    'version' => $recommendedOnlineDestination->getVersion(),
+                    'badge_label' => $recommendedUpdateLabel,
+                    'badge_status' => $recommendedOnlineDestinationUpdateType,
+                    'release_note' => $recommendedOnlineDestinationReleaseNote,
+                    'recommended' => true,
+                    'message' => $this->upgradeContainer->getTranslator()->trans('The recommended version of PrestaShop to which you can update your store, based on its PHP version.'),
+                ];
+            }
+
+            $maxOnlineDestination = $this->upgradeContainer->getUpgrader()->getOnlineMaxDestinationRelease();
+
+            if ($maxOnlineDestination && ($recommendedOnlineDestination === null || $maxOnlineDestination->getVersion() !== $recommendedOnlineDestination->getVersion())) {
+                $maxOnlineDestinationUpdateType = VersionUtils::getUpdateType($this->getPsVersion(), $maxOnlineDestination->getVersion());
+                $maxOnlineDestinatioReleaseNote = $this->upgradeContainer->getUpgrader()->getOnlineMaxDestinationRelease()->getReleaseNoteUrl();
+                $maxUpdateLabel = $this->getUpdateTypeLabel($maxOnlineDestinationUpdateType);
+                $nextReleases['online'] = [
+                    'version' => $maxOnlineDestination->getVersion(),
+                    'badge_label' => $maxUpdateLabel,
+                    'badge_status' => $maxOnlineDestinationUpdateType,
+                    'release_note' => $maxOnlineDestinatioReleaseNote,
+                    'recommended' => false,
+                    'message' => $this->upgradeContainer->getTranslator()->trans('The maximum version of PrestaShop to which you can update your store, based on its PHP version.'),
+                ];
+            }
         }
 
+        $upgradeConfiguration = $this->upgradeContainer->getUpdateConfiguration();
+        $localVersions = $this->upgradeContainer->getLocalVersionFilesService()->getFlatZipAndXmlLists();
+        $noLocalArchive = empty($localVersions['zip']) && empty($localVersions['xml']);
+        $currentPsVersion = $this->upgradeContainer->getProperty(UpgradeContainer::PS_VERSION);
+        $currentMajorVersion = VersionUtils::splitPrestaShopVersion($currentPsVersion)['major'];
+
+        return array_merge(
+            $updateSteps->getStepParams($this::CURRENT_STEP),
+            [
+                'dev_doc_upgrade_web_url' => DocumentationLinks::getDevDocUpdateAssistantWebUrl($currentMajorVersion),
+                'up_to_date' => !$isNewerVersionAvailableOnline,
+                'no_local_archive' => $noLocalArchive,
+                // TODO: assets_base_path is provided by all controllers. What about a asset() twig function instead?
+                'assets_base_path' => $this->upgradeContainer->getAssetsEnvironment()->getAssetsBaseUrl($this->request),
+                'current_prestashop_version' => $this->getPsVersion(),
+                'current_php_version' => VersionUtils::getHumanReadableVersionOf(PHP_VERSION_ID),
+                'local_archives' => [
+                    'zip' => $localVersions['zip'],
+                    'xml' => $localVersions['xml'],
+                ],
+                'next_releases' => $nextReleases,
+                'form_version_choice_name' => self::FORM_NAME,
+                'form_route_to_save' => Routes::UPDATE_STEP_VERSION_CHOICE_SAVE_FORM,
+                'form_route_to_submit' => Routes::UPDATE_STEP_VERSION_CHOICE_SUBMIT_FORM,
+                'form_fields' => self::FORM_FIELDS,
+                'form_options' => self::FORM_OPTIONS,
+                'current_values' => [
+                    self::FORM_FIELDS['channel'] => $upgradeConfiguration->getChannel(),
+                    self::FORM_FIELDS['archive_zip'] => $upgradeConfiguration->getLocalChannelZip(),
+                    self::FORM_FIELDS['archive_xml'] => $upgradeConfiguration->getLocalChannelXml(),
+                ],
+            ]
+        );
+    }
+
+    private function getUpdateTypeLabel(string $updateType): ?string
+    {
         switch ($updateType) {
             case 'major':
                 $updateLabel = $this->upgradeContainer->getTranslator()->trans('Major version');
@@ -103,80 +162,30 @@ class UpdatePageVersionChoiceController extends AbstractPageWithStepController
             default:
                 $updateLabel = null;
         }
-        $archiveRepository = $this->upgradeContainer->getLocalArchiveRepository();
 
-        $upgradeConfiguration = $this->upgradeContainer->getUpgradeConfiguration();
-        $currentChannel = $upgradeConfiguration->getChannel();
-
-        return array_merge(
-            $updateSteps->getStepParams($this::CURRENT_STEP),
-            [
-                'up_to_date' => !$isNewerVersionAvailableOnline,
-                'no_local_archive' => !$this->upgradeContainer->getLocalArchiveRepository()->hasLocalArchive(),
-                'assets_base_path' => $this->upgradeContainer->getAssetsEnvironment()->getAssetsBaseUrl($this->request),
-                'current_prestashop_version' => $this->getPsVersion(),
-                'current_php_version' => VersionUtils::getHumanReadableVersionOf(PHP_VERSION_ID),
-                'local_archives' => [
-                    'zip' => $archiveRepository->getZipLocalArchive(),
-                    'xml' => $archiveRepository->getXmlLocalArchive(),
-                ],
-                'next_release' => [
-                    'version' => $onlineDestination ? $onlineDestination->getVersion() : null,
-                    'badge_label' => $updateLabel,
-                    'badge_status' => $updateType,
-                    'release_note' => $releaseNote,
-                ],
-                'form_version_choice_name' => self::FORM_NAME,
-                'form_route_to_save' => Routes::UPDATE_STEP_VERSION_CHOICE_SAVE_FORM,
-                'form_route_to_submit' => Routes::UPDATE_STEP_VERSION_CHOICE_SUBMIT_FORM,
-                'form_fields' => self::FORM_FIELDS,
-                'form_options' => self::FORM_OPTIONS,
-                'current_values' => [
-                    self::FORM_FIELDS['channel'] => $currentChannel,
-                    self::FORM_FIELDS['archive_zip'] => $upgradeConfiguration->getLocalChannelZip(),
-                    self::FORM_FIELDS['archive_xml'] => $upgradeConfiguration->getLocalChannelXml(),
-                ],
-            ]
-        );
+        return $updateLabel;
     }
 
     /**
+     * @return array{
+     *                'requirements_ok': bool,
+     *                'warnings':array<int, array{'message': string, 'list'?: array<string>}>,
+     *                'errors':array<int, array{'message': string, 'list'?: array<string>}>}
+     *
      * @throws Exception
      */
     private function getRequirements(): array
     {
-        $this->upgradeContainer->initPrestaShopCore();
-
-        $state = $this->upgradeContainer->getState();
-
-        $distributionApiService = new DistributionApiService();
-        $phpVersionResolverService = new PhpVersionResolverService(
-            $distributionApiService,
-            $this->upgradeContainer->getFileLoader(),
-            $state->getCurrentVersion()
-        );
-
-        $upgradeSelfCheck = new UpgradeSelfCheck(
-            $this->upgradeContainer->getUpgrader(),
-            $state,
-            $this->upgradeContainer->getUpgradeConfiguration(),
-            $this->upgradeContainer->getPrestaShopConfiguration(),
-            $this->upgradeContainer->getTranslator(),
-            $phpVersionResolverService,
-            $this->upgradeContainer->getChecksumCompare(),
-            _PS_ROOT_DIR_,
-            _PS_ADMIN_DIR_,
-            $this->upgradeContainer->getProperty(UpgradeContainer::WORKSPACE_PATH)
-        );
+        $upgradeSelfCheck = $this->upgradeContainer->getUpgradeSelfCheck();
 
         $warnings = $upgradeSelfCheck->getWarnings();
         foreach ($warnings as $warningKey => $warningValue) {
-            $warnings[$warningKey] = $upgradeSelfCheck->getRequirementWording($warningKey);
+            $warnings[$warningKey] = $upgradeSelfCheck->getRequirementWording($warningKey, true);
         }
 
         $errors = $upgradeSelfCheck->getErrors();
         foreach ($errors as $errorKey => $errorValue) {
-            $errors[$errorKey] = $upgradeSelfCheck->getRequirementWording($errorKey);
+            $errors[$errorKey] = $upgradeSelfCheck->getRequirementWording($errorKey, true);
         }
 
         return [
@@ -210,18 +219,38 @@ class UpdatePageVersionChoiceController extends AbstractPageWithStepController
             if ($isLocal) {
                 $file = $requestConfig[UpgradeConfiguration::ARCHIVE_ZIP];
                 $fullFilePath = $this->upgradeContainer->getProperty(UpgradeContainer::DOWNLOAD_PATH) . DIRECTORY_SEPARATOR . $file;
-                $requestConfig['archive_version_num'] = $this->upgradeContainer->getPrestashopVersionService()->extractPrestashopVersionFromZip($fullFilePath);
+                $requestConfig[UpgradeConfiguration::ARCHIVE_VERSION_NUM] = $this->upgradeContainer->getPrestashopVersionService()->extractPrestashopVersionFromZip($fullFilePath);
             }
 
-            $config = $this->upgradeContainer->getUpgradeConfiguration();
-            $config->merge($requestConfig);
+            switch ($channel) {
+                case UpgradeConfiguration::CHANNEL_LOCAL:
+                    $destinationVersion = $requestConfig[UpgradeConfiguration::ARCHIVE_VERSION_NUM];
+                    break;
+                case UpgradeConfiguration::CHANNEL_ONLINE:
+                    $destinationVersion = $this->upgradeContainer->getUpgrader()->getOnlineMaxDestinationRelease()->getVersion();
+                    break;
+                case UpgradeConfiguration::CHANNEL_ONLINE_RECOMMENDED:
+                    $destinationVersion = $this->upgradeContainer->getUpgrader()->getOnlineRecommendedDestinationRelease()->getVersion();
+                    break;
+            }
 
-            $this->upgradeContainer->getUpgradeConfigurationStorage()->save($config, UpgradeFileNames::CONFIG_FILENAME);
-            $state = $this->upgradeContainer->getState()->setDestinationVersion($this->upgradeContainer->getUpgrader()->getDestinationVersion());
-            $state->save();
+            if (isset($destinationVersion)) {
+                $requestConfig[UpgradeConfiguration::UPDATE_TYPE] = VersionUtils::getUpdateType($this->getPsVersion(), $destinationVersion);
+            }
+
+            $configurationStorage = $this->upgradeContainer->getConfigurationStorage();
+
+            $updateConfiguration = $this->upgradeContainer->getUpdateConfiguration();
+            $updateConfiguration->merge($requestConfig);
+
+            if (!$updateConfiguration->hasAllTheShopConfiguration()) {
+                $this->upgradeContainer->getPrestaShopConfiguration()->fillInUpdateConfiguration($updateConfiguration);
+            }
+
+            $configurationStorage->save($updateConfiguration);
 
             if ($channel !== null) {
-                $params[$channel . '_requirements'] = $this->getRequirements();
+                $params['requirements'] = $this->getRequirements();
             }
         }
 
@@ -240,15 +269,102 @@ class UpdatePageVersionChoiceController extends AbstractPageWithStepController
             ));
         }
 
-        return AjaxResponseBuilder::hydrationResponse(PageSelectors::RADIO_CARD_ONLINE_PARENT_ID, $this->getTwig()->render(
+        if ($channel === UpgradeConfiguration::CHANNEL_ONLINE) {
+            $params['next_release'] = $params['next_releases']['online'];
+            $params['release_type'] = 'online';
+            $params['form_option_online_value'] = self::FORM_OPTIONS['online_value'];
+
+            return AjaxResponseBuilder::hydrationResponse(PageSelectors::RADIO_CARD_ONLINE_PARENT_ID, $this->getTwig()->render(
             '@ModuleAutoUpgrade/components/radio-card-online.html.twig',
             $params
         ));
+        } else {
+            $params['next_release'] = $params['next_releases']['online_recommended'];
+            $params['release_type'] = 'online_recommended';
+            $params['form_option_online_value'] = self::FORM_OPTIONS['online_recommended_value'];
+
+            return AjaxResponseBuilder::hydrationResponse(PageSelectors::RADIO_CARD_ONLINE_RECOMMENDED_PARENT_ID, $this->getTwig()->render(
+            '@ModuleAutoUpgrade/components/radio-card-online.html.twig',
+            $params
+        ));
+        }
     }
 
     public function submit(): JsonResponse
     {
         /* we dont check again because the button is only accessible if check are ok */
         return AjaxResponseBuilder::nextRouteResponse(Routes::UPDATE_STEP_UPDATE_OPTIONS);
+    }
+
+    public function coreTemperedFilesDialog(): JsonResponse
+    {
+        return AjaxResponseBuilder::hydrationResponse(
+            PageSelectors::DIALOG_PARENT_ID,
+            $this->getTemperedFilesDialog([
+                'title' => $this->upgradeContainer->getTranslator()->trans('List of core alterations'),
+                'message' => $this->upgradeContainer->getTranslator()->trans('Some core files have been altered, customization made on these files will be lost during the update.'),
+                'container_id' => PageSelectors::TEMPERED_FILES_CONTAINER_ID,
+                'content_action' => Routes::UPDATE_STEP_VERSION_CHOICE_CORE_TEMPERED_FILES_CONTENT,
+            ]),
+            ['addScript' => 'tempered-files-dialog']
+        );
+    }
+
+    public function coreTemperedFilesContent(): JsonResponse
+    {
+        return AjaxResponseBuilder::hydrationResponse(
+            PageSelectors::TEMPERED_FILES_CONTAINER_ID,
+            $this->getTemperedFilesDialogContent([
+                'missing_files' => $this->upgradeContainer->getUpgradeSelfCheck()->getCoreMissingFiles(),
+                'altered_files' => $this->upgradeContainer->getUpgradeSelfCheck()->getCoreAlteredFiles(),
+            ])
+        );
+    }
+
+    public function themeTemperedFilesDialog(): JsonResponse
+    {
+        return AjaxResponseBuilder::hydrationResponse(
+            PageSelectors::DIALOG_PARENT_ID,
+            $this->getTemperedFilesDialog([
+                'title' => $this->upgradeContainer->getTranslator()->trans('List of theme alterations'),
+                'message' => $this->upgradeContainer->getTranslator()->trans('Some theme files have been altered, customization made on these files will be lost during the update.'),
+                'container_id' => PageSelectors::TEMPERED_FILES_CONTAINER_ID,
+                'content_action' => Routes::UPDATE_STEP_VERSION_CHOICE_THEME_TEMPERED_FILES_CONTENT,
+            ]),
+            ['addScript' => 'tempered-files-dialog']
+        );
+    }
+
+    public function themeTemperedFilesContent(): JsonResponse
+    {
+        return AjaxResponseBuilder::hydrationResponse(
+            PageSelectors::TEMPERED_FILES_CONTAINER_ID,
+            $this->getTemperedFilesDialogContent([
+                'missing_files' => $this->upgradeContainer->getUpgradeSelfCheck()->getThemeMissingFiles(),
+                'altered_files' => $this->upgradeContainer->getUpgradeSelfCheck()->getThemeAlteredFiles(),
+            ])
+        );
+    }
+
+    /**
+     * @param array<string,string|string[]> $params
+     */
+    private function getTemperedFilesDialog($params): string
+    {
+        return $this->getTwig()->render(
+            '@ModuleAutoUpgrade/dialogs/dialog-tempered-files.html.twig',
+            $params
+        );
+    }
+
+    /**
+     * @param array<string,string|string[]> $params
+     */
+    private function getTemperedFilesDialogContent($params): string
+    {
+        return $this->getTwig()->render(
+            '@ModuleAutoUpgrade/dialogs/dialog-tempered-files-content.html.twig',
+            $params
+        );
     }
 }

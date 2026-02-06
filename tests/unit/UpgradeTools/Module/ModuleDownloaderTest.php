@@ -5,7 +5,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -13,19 +13,15 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 use PHPUnit\Framework\TestCase;
+use PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException;
 use PrestaShop\Module\AutoUpgrade\Log\Logger;
+use PrestaShop\Module\AutoUpgrade\Services\DownloadService;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Module\ModuleDownloader;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Module\ModuleDownloaderContext;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Module\Source\ModuleSource;
@@ -39,6 +35,9 @@ class ModuleDownloaderTest extends TestCase
 
     /** @var PHPUnit_Framework_MockObject_MockObject|Logger|(Logger&PHPUnit_Framework_MockObject_MockObject) */
     private $logger;
+
+    /** @var PHPUnit_Framework_MockObject_MockObject|DownloadService|(Logger&PHPUnit_Framework_MockObject_MockObject) */
+    private $downloadService;
 
     public static function setUpBeforeClass()
     {
@@ -54,6 +53,7 @@ class ModuleDownloaderTest extends TestCase
             $this->markTestSkipped('An issue with this version of PHPUnit and PHP 8+ prevents this test to run.');
         }
 
+        $this->downloadService = $this->createMock(DownloadService::class);
         $translator = $this->createMock(Translator::class);
         $translator->method('trans')
             ->willReturnCallback(function ($message, $parameters = []) {
@@ -61,7 +61,7 @@ class ModuleDownloaderTest extends TestCase
             });
 
         $this->logger = $this->createMock(Logger::class);
-        $this->moduleDownloader = new ModuleDownloader($translator, $this->logger, sys_get_temp_dir() . '/fakeDownloaderDestination');
+        $this->moduleDownloader = new ModuleDownloader($this->downloadService, $translator, $this->logger, sys_get_temp_dir() . '/fakeDownloaderDestination');
     }
 
     public function testModuleDownloaderSucceedsOnFirstTryWithLocalFile()
@@ -69,7 +69,7 @@ class ModuleDownloaderTest extends TestCase
         $moduleContext = new ModuleDownloaderContext(['name' => 'mymodule', 'currentVersion' => '1.0.0']);
 
         $dummyProvider1 = (new ModuleSourceProviderMock())->setSources([
-            new ModuleSource('mymodule', '2.0.0', realpath(__DIR__ . '/../../../fixtures/mymodule'), false),
+            new ModuleSource('mymodule', '2.0.0', realpath(__DIR__ . '/../../../fixtures/modules/mymodule'), false),
             new ModuleSource('mymodule', '1.2.0', realpath(__DIR__ . '/../../../fixtures/ArchiveExample.zip'), false),
         ]);
         $moduleSourceList = new ModuleSourceAggregate([$dummyProvider1]);
@@ -78,7 +78,7 @@ class ModuleDownloaderTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('notice')
-            ->with('Module mymodule update files (1.0.0 => 2.0.0) have been fetched from ' . realpath(__DIR__ . '/../../../fixtures/mymodule') . '.');
+            ->with('Module mymodule update files (1.0.0 => 2.0.0) have been fetched from ' . realpath(__DIR__ . '/../../../fixtures/modules/mymodule') . '.');
 
         $this->moduleDownloader->downloadModule($moduleContext);
 
@@ -121,7 +121,7 @@ class ModuleDownloaderTest extends TestCase
                 PHP_VERSION_ID >= 80000 ? ['RecursiveDirectoryIterator::__construct(/non-existing-folder): Failed to open directory: No such file or directory']
                     : ['RecursiveDirectoryIterator::__construct(/non-existing-folder): failed to open dir: No such file or directory'], ['Download of source #0 has failed.']
             );
-        $this->expectExceptionMessage('All download attempts have failed. Check your environment and try again.');
+        $this->expectExceptionMessage('All download attempts have failed. The module mymodule has been disabled. You can try to update it manually afterwards.');
 
         $this->moduleDownloader->downloadModule($moduleContext);
     }
@@ -134,7 +134,7 @@ class ModuleDownloaderTest extends TestCase
             new ModuleSource('mymodule', '2.0.0', '/non-existing-folder', false),
         ]);
         $dummyProvider2 = (new ModuleSourceProviderMock())->setSources([
-            new ModuleSource('mymodule', '2.0.0', realpath(__DIR__ . '/../../../fixtures/mymodule'), false),
+            new ModuleSource('mymodule', '2.0.0', realpath(__DIR__ . '/../../../fixtures/modules/mymodule'), false),
         ]);
         $moduleSourceList = new ModuleSourceAggregate([$dummyProvider1, $dummyProvider2]);
 
@@ -149,7 +149,7 @@ class ModuleDownloaderTest extends TestCase
             );
         $this->logger->expects($this->once())
             ->method('notice')
-            ->with('Module mymodule update files (1.0.0 => 2.0.0) have been fetched from ' . realpath(__DIR__ . '/../../../fixtures/mymodule') . '.');
+            ->with('Module mymodule update files (1.0.0 => 2.0.0) have been fetched from ' . realpath(__DIR__ . '/../../../fixtures/modules/mymodule') . '.');
 
         $this->moduleDownloader->downloadModule($moduleContext);
     }
@@ -171,7 +171,11 @@ class ModuleDownloaderTest extends TestCase
                 ['Invalid contents from provider (Got an XML file).'],
                 ['Download of source #0 has failed.']
             );
-        $this->expectExceptionMessage('All download attempts have failed. Check your environment and try again.');
+        $this->expectExceptionMessage('All download attempts have failed. The module mymodule has been disabled. You can try to update it manually afterwards.');
+
+        $this->downloadService
+            ->method('downloadWithRetry')
+            ->willThrowException(new UpgradeException('Invalid contents from provider (Got an XML file).'));
 
         $this->moduleDownloader->downloadModule($moduleContext);
     }

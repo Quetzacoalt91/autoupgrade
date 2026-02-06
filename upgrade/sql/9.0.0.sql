@@ -1,27 +1,48 @@
 SET SESSION sql_mode='';
 SET NAMES 'utf8mb4';
 
-INSERT INTO `PREFIX_configuration` (`name`, `value`, `date_add`, `date_upd`) VALUES
-  ('PS_DEBUG_COOKIE_NAME', '', NOW(), NOW()),
-  ('PS_DEBUG_COOKIE_VALUE', '', NOW(), NOW()),
-  ('PS_SEPARATOR_FILE_MANAGER_SQL', ';', NOW(), NOW()),
-  ('PS_PRODUCT_BREADCRUMB_CATEGORY', 'default', NOW(), NOW())
-;
+/* Persist current product routes to avoid SEO issues after changing default routes in 9.0.0 */
+/* See https://github.com/PrestaShop/PrestaShop/pull/37467 */
+/* PHP:ps_900_set_previous_product_route_as_custom(); */;
+
+/* Add a file separator input to the sql manager settings - https://github.com/PrestaShop/PrestaShop/pull/35843 */
+/* Allow configuring maximum word difference - https://github.com/PrestaShop/PrestaShop/pull/37261 */
+/* PHP:add_configuration_if_not_exists('PS_DEBUG_COOKIE_NAME', ''); */;
+/* PHP:add_configuration_if_not_exists('PS_DEBUG_COOKIE_VALUE', ''); */;
+/* PHP:add_configuration_if_not_exists('PS_SEPARATOR_FILE_MANAGER_SQL', ';'); */;
+/* PHP:add_configuration_if_not_exists('PS_PRODUCT_BREADCRUMB_CATEGORY', 'default'); */;
+/* PHP:add_configuration_if_not_exists('PS_SEARCH_FUZZY_MAX_DIFFERENCE', 5); */;
+
+/* Enable controlling of default language URL prefix - https://github.com/PrestaShop/PrestaShop/pull/37236 */
+/* PHP:ps_900_set_url_lang_prefix(); */;
+
+/* Remove meta keywords - https://github.com/PrestaShop/PrestaShop/pull/36873 */
+/* PHP:drop_column_if_exists('category_lang', 'meta_keywords'); */;
+/* PHP:drop_column_if_exists('cms_lang', 'meta_keywords'); */;
+/* PHP:drop_column_if_exists('cms_category_lang', 'meta_keywords'); */;
+/* PHP:drop_column_if_exists('manufacturer_lang', 'meta_keywords'); */;
+/* PHP:drop_column_if_exists('meta_lang', 'keywords'); */;
+/* PHP:drop_column_if_exists('product_lang', 'meta_keywords'); */;
+/* PHP:drop_column_if_exists('supplier_lang', 'meta_keywords'); */;
 
 /* Add feature flag types */
 /* PHP:add_column('feature_flag', 'type', 'VARCHAR(64) DEFAULT \'env,dotenv,db\' NOT NULL AFTER `name`'); */;
-UPDATE `PREFIX_feature_flag` SET `state` = 1 WHERE `name` = 'authorization_server';
-UPDATE `PREFIX_tab` SET `active` = 1 WHERE `class_name` = 'AdminAuthorizationServer';
 
 /* Insert new feature flags introduced by v9 */
 INSERT INTO `PREFIX_feature_flag` (`name`, `type`, `label_wording`, `label_domain`, `description_wording`, `description_domain`, `state`, `stability`) VALUES
-  ('authorization_server_multistore', 'env,dotenv,db', 'Authorization server - Multistore', 'Admin.Advparameters.Feature', 'Enable or disable the Authorization server when multistore is enabled.', 'Admin.Advparameters.Help', 0, 'beta'),
-  ('symfony_layout', 'env,query,dotenv,db', 'Symfony layout', 'Admin.Advparameters.Feature', 'Enable / Disable symfony layout (in opposition to legacy layout).', 'Admin.Advparameters.Help', 1, 'beta'),
   ('front_container_v2', 'env,dotenv,db', 'New front container', 'Admin.Advparameters.Feature', 'Enable / Disable the new front container.', 'Admin.Advparameters.Help', 0, 'beta'),
   ('customer_group', 'env,dotenv,db', 'Customer group', 'Admin.Advparameters.Feature', 'Enable / Disable the customer group page.', 'Admin.Advparameters.Help', 0, 'beta'),
   ('store', 'env,dotenv,db', 'Store', 'Admin.Advparameters.Feature', 'Enable / Disable the store page.', 'Admin.Advparameters.Help', 0, 'beta'),
-  ('search_conf', 'env,dotenv,db', 'Search configuration', 'Admin.Advparameters.Feature', 'Enable / Disable the search configuration page.', 'Admin.Advparameters.Help', 0, 'beta'),
-  ('merchandise_return', 'env,dotenv,db', 'Merchandise return', 'Admin.Advparameters.Feature', 'Enable / Disable the merchandise return page.', 'Admin.Advparameters.Help', 0, 'beta');
+  ('merchandise_return', 'env,dotenv,db', 'Merchandise return', 'Admin.Advparameters.Feature', 'Enable / Disable the merchandise return page.', 'Admin.Advparameters.Help', 0, 'beta'),
+  ('admin_api_multistore', 'env,query,dotenv,db', 'Admin API - Multistore', 'Admin.Advparameters.Feature', 'Enable or disable the Admin API when multistore is enabled.', 'Admin.Advparameters.Help', 0, 'beta'),
+  ('admin_api_experimental_endpoints', 'env,dotenv,db', 'Admin API - Enable experimental endpoints', 'Admin.Advparameters.Feature', 'Experimental API endpoints are disabled by default in prod environment, this configuration allows to forcefully enable them.', 'Admin.Advparameters.Help', 0, 'beta')
+;
+
+/* Remove olf feature flag before Authorization server was renamed into Admin API */
+DELETE FROM `PREFIX_feature_flag` WHERE `name`='authorization_server';
+
+/* Update carrier feature flag to stable, but we don't force enabled by default */
+UPDATE `PREFIX_feature_flag` SET `stability` = 'stable' WHERE `name` = 'carrier';
 
 /* Remove old feature flags from 8.1.x */
 DELETE FROM `PREFIX_feature_flag` WHERE `name` IN ('product_page_v2', 'title', 'order_state', 'multiple_image_format', 'attribute_group');
@@ -44,7 +65,7 @@ UPDATE `PREFIX_module_shop` SET `enable_device` = '7';
 
 /* Allow cover configuration */
 /* https://github.com/PrestaShop/PrestaShop/pull/33363 */
-INSERT INTO `PREFIX_configuration` (`name`, `value`, `date_add`, `date_upd`) VALUES ('PS_USE_COMBINATION_IMAGE_IN_LISTING', '0', NOW(), NOW());
+/* PHP:add_configuration_if_not_exists('PS_USE_COMBINATION_IMAGE_IN_LISTING', '0'); */;
 
 /* Remove purpose of store */
 /* https://github.com/PrestaShop/PrestaShop/pull/33232 */
@@ -190,6 +211,9 @@ ALTER TABLE `PREFIX_order_payment` CHANGE `order_reference` `order_reference` VA
 INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
   (NULL, 'actionMailAlterMessageBeforeSend', 'Modify Swift Message before sending', 'This hook is called before the Swift Message is sent in Mail.php', '1'),
   (NULL, 'actionValidateOrderBefore', 'Before validating an order', 'This hook is called before validating an order by core', '1'),
+  (NULL, 'actionDuplicateCartData', 'Cart duplication', 'This hook is triggered after all the cart related data has been duplicated', '1'),
+  (NULL, 'actionObjectDuplicateAfter', 'After duplicating an object', 'This hook is called after duplicating an object by the core.', '1'),
+  (NULL, 'displayCartExtraProductInfo', 'Extra information in shopping cart product line', 'This hook adds extra information to the product lines, in the shopping cart', '1'),
   (NULL, 'actionPresentSupplier', 'Supplier Presenter', 'This hook is called before a supplier is presented', '1'),
   (NULL, 'actionPresentManufacturer', 'Manufacturer Presenter', 'This hook is called before a manufacturer is presented', '1'),
   (NULL, 'actionPresentStore', 'Store Presenter', 'This hook is called before a store is presented', '1'),
@@ -274,7 +298,108 @@ INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`
   (NULL, 'actionCustomerBoughtProductGridPresenterModifier', 'Modify customer bought product grid template data', 'This hook allows to modify data which is about to be used in template for customer bought product grid', '1'),
   (NULL, 'actionCustomerViewedProductGridPresenterModifier', 'Modify customer viewed product grid template data', 'This hook allows to modify data which is about to be used in template for customer viewed product grid', '1'),
   (NULL, 'actionCustomerGroupsGridPresenterModifier', 'Modify customer groups grid template data', 'This hook allows to modify data which is about to be used in template for customer groups grid', '1'),
-  (NULL, 'actionValidateOrderBefore', 'Before validating an order', 'This hook is called before validating an order by core', '1')
+  (NULL, 'actionPDFInvoiceRender', 'PDF Invoice - Render', 'This hook is called when a PDF invoice is rendered from the Front Office and the Back Office', '1'),
+  (NULL, 'actionPresentObject', 'Object Presenter', 'This hook is called before an object is presented', '1'),
+  (NULL, 'actionSetInvoice', '', '', '1'),
+  (NULL, 'actionOrderHistoryAddAfter', '', '', '1'),
+  (NULL, 'actionInvoiceNumberFormatted', '', '', '1'),
+  (NULL, 'actionOnImageResizeAfter', '', '', '1'),
+  (NULL, 'actionOnImageCutAfter', '', '', '1'),
+  (NULL, 'actionSubmitCustomerAddressForm', '', '', '1'),
+  (NULL, 'actionCartSummary', '', '', '1'),
+  (NULL, 'actionGetExtraMailTemplateVars', '', '', '1'),
+  (NULL, 'deleteProductAttribute', '', '', '1'),
+  (NULL, 'actionGetProductPropertiesBefore', '', '', '1'),
+  (NULL, 'actionGetProductPropertiesAfter', '', '', '1'),
+  (NULL, 'displayCustomization', '', '', '1'),
+  (NULL, 'actionDeliveryPriceByWeight', '', '', '1'),
+  (NULL, 'actionDeliveryPriceByPrice', '', '', '1'),
+  (NULL, 'actionDispatcher', '', '', '1'),
+  (NULL, 'moduleRoutes', '', '', '1'),
+  (NULL, 'actionGetIDZoneByAddressID', '', '', '1'),
+  (NULL, 'actionModuleRegisterHookBefore', '', '', '1'),
+  (NULL, 'actionModuleRegisterHookAfter', '', '', '1'),
+  (NULL, 'actionModuleUnRegisterHookBefore', '', '', '1'),
+  (NULL, 'actionModuleUnRegisterHookAfter', '', '', '1'),
+  (NULL, 'actionShopDataDuplication', '', '', '1'),
+  (NULL, 'actionAdminMetaBeforeWriteRobotsFile', '', '', '1'),
+  (NULL, 'actionAdminMetaAfterWriteRobotsFile', '', '', '1'),
+  (NULL, 'termsAndConditions', '', '', '1'),
+  (NULL, 'actionValidateStepComplete', '', '', '1'),
+  (NULL, 'actionAdminControllerSetMedia', '', '', '1'),
+  (NULL, 'overrideMinimalPurchasePrice', '', '', '1'),
+  (NULL, 'actionFrontControllerSetMedia', '', '', '1'),
+  (NULL, 'overrideLayoutTemplate', '', '', '1'),
+  (NULL, 'productSearchProvider', '', '', '1'),
+  (NULL, 'actionAttributeCombinationDelete', '', '', '1'),
+  (NULL, 'actionAttributeCombinationSave', '', '', '1'),
+  (NULL, 'actionCustomerBeforeUpdateGroup', '', '', '1'),
+  (NULL, 'actionCustomerAddGroups', '', '', '1'),
+  (NULL, 'actionProductCoverage', '', '', '1'),
+  (NULL, 'actionObjectAddBefore', '', '', '1'),
+  (NULL, 'actionObjectAddAfter', '', '', '1'),
+  (NULL, 'actionObjectUpdateBefore', '', '', '1'),
+  (NULL, 'actionObjectUpdateAfter', '', '', '1'),
+  (NULL, 'actionObjectDeleteBefore', '', '', '1'),
+  (NULL, 'actionObjectDeleteAfter', '', '', '1'),
+  (NULL, 'actionWishlistAddProduct', '', '', '1'),
+  (NULL, 'displayGDPRConsent', '', '', '1'),
+  (NULL, 'actionObjectProductCommentValidateAfter', '', '', '1'),
+  (NULL, 'actionExportGDPRData', '', '', '1'),
+  (NULL, 'actionDeleteGDPRCustomer', '', '', '1'),
+  (NULL, 'actionModuleMailAlertSendCustomer', '', '', '1'),
+  (NULL, 'actionNewsletterRegistrationBefore', '', '', '1'),
+  (NULL, 'actionNewsletterRegistrationAfter', '', '', '1'),
+  (NULL, 'displayNewsletterRegistration', '', '', '1'),
+  (NULL, 'dashboardZoneOne', '', '', '1'),
+  (NULL, 'dashboardZoneTwo', '', '', '1'),
+  (NULL, 'dashboardData', '', '', '1'),
+  (NULL, 'actionPasswordRenew', '', '', '1'),
+  (NULL, 'actionDownloadAttachment', '', '', '1'),
+  (NULL, 'displayReassurance', '', '', '1'),
+  (NULL, 'displayProductPriceBlock', '', '', '1'),
+  (NULL, 'displayProductListReviews', '', '', '1'),
+  (NULL, 'displayCrossSellingShoppingCart', '', '', '1'),
+  (NULL, 'displayExpressCheckout', '', '', '1'),
+  (NULL, 'displayCheckoutSubtotalDetails', '', '', '1'),
+  (NULL, 'displayNav1', '', '', '1'),
+  (NULL, 'displayNav2', '', '', '1'),
+  (NULL, 'displayOrderConfirmation1', '', '', '1'),
+  (NULL, 'displayOrderConfirmation2', '', '', '1'),
+  (NULL, 'displayFooterBefore', '', '', '1'),
+  (NULL, 'displayFooterAfter', '', '', '1'),
+  (NULL, 'displayCMSDisputeInformation', '', '', '1'),
+  (NULL, 'displayCMSPrintButton', '', '', '1'),
+  (NULL, 'displaySearch', '', '', '1'),
+  (NULL, 'displayNotFound', '', '', '1'),
+  (NULL, 'displayAdminAfterHeader', '', '', '1'),
+  (NULL, 'displayAdminNavBarBeforeEnd', '', '', '1'),
+  (NULL, 'displayAdminListBefore', '', '', '1'),
+  (NULL, 'displayAdminListAfter', '', '', '1'),
+  (NULL, 'displayAdminOptions', '', '', '1'),
+  (NULL, 'displayAdminForm', '', '', '1'),
+  (NULL, 'displayAdminView', '', '', '1'),
+  (NULL, 'displayAdminOrderSideBottom', '', '', '1'),
+  (NULL, 'displayOrderPreview', '', '', '1'),
+  (NULL, 'displayAdminLogin', '', '', '1'),
+  (NULL, 'actionPresentModule', '', '', '1'),
+  (NULL, 'actionAdminThemesControllerUpdate_optionsAfter', '', '', '1'),
+  (NULL, 'actionAdminDuplicateBefore', '', '', '1'),
+  (NULL, 'actionAdminDuplicateAfter', '', '', '1'),
+  (NULL, 'actionSearch', '', '', '1'),
+  (NULL, 'actionSearchTermFormBuilderModifier', 'Modify search term identifiable object form', 'This hook allows to modify search term identifiable object forms content by modifying form builder data or FormBuilder itself', '1'),
+  (NULL, 'actionSearchTermFormDataProviderData', 'Provide search term identifiable object form data for update', 'This hook allows to provide search term identifiable object form data which will prefill the form in update/edition page', '1'),
+  (NULL, 'actionSearchTermFormDataProviderDefaultData', 'Provide search term identifiable object default form data for creation', 'This hook allows to provide search term identifiable object form data which will prefill the form in creation page', '1'),
+  (NULL, 'actionBeforeUpdateSearchTermFormHandler', 'Modify search term identifiable object data before updating it', 'This hook allows to modify search term identifiable object forms data before it was updated', '1'),
+  (NULL, 'actionAfterUpdateSearchTermFormHandler', 'Modify search term identifiable object data after updating it', 'This hook allows to modify search term identifiable object forms data after it was updated', '1'),
+  (NULL, 'actionBeforeCreateSearchTermFormHandler', 'Modify search term identifiable object data before creating it', 'This hook allows to modify search term identifiable object forms data before it was created', '1'),
+  (NULL, 'actionAfterCreateSearchTermFormHandler', 'Modify search term identifiable object data after creating it', 'This hook allows to modify search term identifiable object forms data after it was created', '1'),
+  (NULL, 'actionProductGetAttributesGroupsBefore', 'Triggers before getting product attributes groups', 'Allows to modify product attributes groups SQL query before they are retrieved from the database.', '1'),
+  (NULL, 'actionProductGetAttributesGroupsAfter', 'Triggers after getting product attributes groups', 'Allows to modify product attributes groups after they are retrieved from the database.', '1'),
+  (NULL, 'actionGetPdfRenderer', 'Provide a PDF renderer', 'This hook allows to provide a custom PDF renderer to generate PDF files', '1'),
+  (NULL, 'displayAdminStoreInformation', 'Display extra store information', 'This hook displays content in the Information page to add store information', '1'),
+  -- https://github.com/PrestaShop/PrestaShop/pull/34133
+  (NULL, 'actionSubmitAccountBefore', 'Before customer account creation', 'This hook is called before a customer account creation', '1')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`);
 
 /* Auto generated hooks removed for version 9.0.0 */
@@ -297,4 +422,44 @@ DELETE FROM `PREFIX_hook_module_exceptions` WHERE `id_hook` NOT IN (SELECT id_ho
 /* Feature value position */
 /* https://github.com/PrestaShop/PrestaShop/pull/37042 */
 /* PHP:add_column('feature_value', 'position', 'int(10) unsigned NOT NULL DEFAULT \'0\''); */;
-INSERT INTO `PREFIX_configuration` (`name`, `value`, `date_add`, `date_upd`) VALUES ('PS_FEATURE_VALUES_ORDER', 'name', NOW(), NOW());
+/* PHP:add_configuration_if_not_exists('PS_FEATURE_VALUES_ORDER', 'name'); */;
+
+/* Upgrade attachment names length */
+/* https://github.com/PrestaShop/PrestaShop/pull/37598 */
+ALTER TABLE `PREFIX_attachment` MODIFY COLUMN `file_name` varchar(255) NOT NULL;
+ALTER TABLE `PREFIX_attachment_lang` MODIFY COLUMN `name` varchar(255) DEFAULT NULL;
+
+/* Fix category thumbnail images */
+/* https://github.com/PrestaShop/PrestaShop/pull/36877 */
+/* PHP:ps_900_migrate_category_images(); */;
+
+/* Add id_product in customer message table */
+/* https://github.com/PrestaShop/PrestaShop/pull/37861 */
+/* PHP:add_column('customer_message', 'id_product', 'INT UNSIGNED DEFAULT NULL AFTER `id_employee`'); */;
+ALTER TABLE `PREFIX_customer_message` ADD INDEX `id_product` (`id_product`);
+
+/* Update Admin API tabs and roles */
+UPDATE `PREFIX_tab` SET `wording`='Admin API', `wording_domain`='Admin.Navigation.Menu', `class_name`='AdminAdminAPI', `route_name`='admin_api_index', `active`=1 WHERE `class_name`='AdminAuthorizationServer';
+/* PHP:ps_update_tab_lang('Admin.Navigation.Menu', 'AdminAdminAPI'); */;
+
+UPDATE `PREFIX_authorization_role` SET `slug`='ROLE_MOD_TAB_ADMINADMINAPI_CREATE' WHERE `slug`='ROLE_MOD_TAB_ADMINAUTHORIZATIONSERVER_CREATE';
+UPDATE `PREFIX_authorization_role` SET `slug`='ROLE_MOD_TAB_ADMINADMINAPI_READ' WHERE `slug`='ROLE_MOD_TAB_ADMINAUTHORIZATIONSERVER_READ';
+UPDATE `PREFIX_authorization_role` SET `slug`='ROLE_MOD_TAB_ADMINADMINAPI_UPDATE' WHERE `slug`='ROLE_MOD_TAB_ADMINAUTHORIZATIONSERVER_UPDATE';
+UPDATE `PREFIX_authorization_role` SET `slug`='ROLE_MOD_TAB_ADMINADMINAPI_DELETE' WHERE `slug`='ROLE_MOD_TAB_ADMINAUTHORIZATIONSERVER_DELETE';
+INSERT INTO `PREFIX_configuration` (`name`, `value`, `date_add`, `date_upd`) VALUES
+    ('PS_ENABLE_ADMIN_API', '1', NOW(), NOW()),
+    ('PS_ADMIN_API_FORCE_DEBUG_SECURED', '1', NOW(), NOW())
+;
+/* PHP:install_ps_apiresources(); */;
+
+/* Reorganize search aliases */
+/* https://github.com/PrestaShop/PrestaShop/pull/37470 */
+/* PHP:ps_900_reorganize_aliases_tab(); */;
+
+/* Add theme_name in image type table */
+/* https://github.com/PrestaShop/PrestaShop/pull/38745 */
+/* https://github.com/PrestaShop/PrestaShop/pull/38767 */
+ALTER TABLE `PREFIX_image_type`
+    ADD COLUMN `theme_name` VARCHAR(255) DEFAULT NULL AFTER `stores`,
+    ADD UNIQUE KEY `UNIQ_907C95215E237E0614E48A3B` (`name`,`theme_name`),
+    DROP INDEX `UNIQ_907C95215E237E06`;

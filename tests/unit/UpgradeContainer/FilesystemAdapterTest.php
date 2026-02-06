@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 use PHPUnit\Framework\TestCase;
@@ -54,7 +48,7 @@ class FilesystemAdapterTest extends TestCase
     protected function setUp()
     {
         parent::setUp();
-        $this->container = new UpgradeContainer('/html', '/html/admin');        // We expect in these tests to NOT update the theme
+        $this->container = new UpgradeContainer(__DIR__, __DIR__ . '/..');     // We expect in these tests to NOT update the theme
         $this->filesystemAdapter = $this->container->getFilesystemAdapter();
     }
 
@@ -77,7 +71,11 @@ class FilesystemAdapterTest extends TestCase
 
     public function testListFilesInDirForBackupWithImages()
     {
-        $this->container->getUpgradeConfiguration()->set(UpgradeConfiguration::PS_AUTOUP_KEEP_IMAGES, true);
+        $configurationStorage = $this->container->getConfigurationStorage();
+        $configuration = $this->container->getUpdateConfiguration();
+        $configuration->merge([UpgradeConfiguration::PS_AUTOUP_KEEP_IMAGES => true]);
+        $configurationStorage->save($configuration);
+
         $expected = $this->loadFixtureAndAddPrefixToFilePaths(
             __DIR__ . '/../../fixtures/listOfFiles-backup-with-images.json',
             self::$pathToFakeShop
@@ -94,7 +92,11 @@ class FilesystemAdapterTest extends TestCase
 
     public function testListFilesInDirForBackupWithoutImages()
     {
-        $this->container->getUpgradeConfiguration()->set(UpgradeConfiguration::PS_AUTOUP_KEEP_IMAGES, false);
+        $configurationStorage = $this->container->getConfigurationStorage();
+        $configuration = $this->container->getUpdateConfiguration();
+        $configuration->merge([UpgradeConfiguration::PS_AUTOUP_KEEP_IMAGES => false]);
+        $configurationStorage->save($configuration);
+
         $expected = $this->loadFixtureAndAddPrefixToFilePaths(
             __DIR__ . '/../../fixtures/listOfFiles-backup-without-images.json',
             self::$pathToFakeShop
@@ -104,31 +106,14 @@ class FilesystemAdapterTest extends TestCase
             self::$pathToFakeShop,
             'backup'
         );
+
         // TODO: Should try using assertEqualsCanonicalizing after upgrade of PHPUnit
         $this->assertEquals([], array_diff($expected, $actual), "There are more files in the expected array than in the actual list: \n" . implode("\n", array_diff($expected, $actual)));
         $this->assertEquals([], array_diff($actual, $expected), "There are more files in the actual array than in the expected list: \n" . implode("\n", array_diff($actual, $expected)));
     }
 
-    public function testListFilesInDirForRestoreWithImages()
+    public function testListFilesInDirForRestore()
     {
-        $this->container->getUpgradeConfiguration()->set(UpgradeConfiguration::PS_AUTOUP_KEEP_IMAGES, true);
-        $expected = $this->loadFixtureAndAddPrefixToFilePaths(
-            __DIR__ . '/../../fixtures/listOfFiles-restore-with-images.json',
-            self::$pathToFakeShop
-        );
-
-        $actual = $this->filesystemAdapter->listFilesInDir(
-            self::$pathToFakeShop,
-            'restore'
-        );
-        // TODO: Should try using assertEqualsCanonicalizing after upgrade of PHPUnit
-        $this->assertEquals([], array_diff($expected, $actual), "There are more files in the expected array than in the actual list: \n" . implode("\n", array_diff($expected, $actual)));
-        $this->assertEquals([], array_diff($actual, $expected), "There are more files in the actual array than in the expected list: \n" . implode("\n", array_diff($actual, $expected)));
-    }
-
-    public function testListFilesInDirForRestoreWithoutImages()
-    {
-        $this->container->getUpgradeConfiguration()->set(UpgradeConfiguration::PS_AUTOUP_KEEP_IMAGES, false);
         $expected = $this->loadFixtureAndAddPrefixToFilePaths(
             __DIR__ . '/../../fixtures/listOfFiles-restore-without-images.json',
             self::$pathToFakeShop
@@ -169,9 +154,9 @@ class FilesystemAdapterTest extends TestCase
         $this->assertTrue(
             $this->filesystemAdapter->isFileSkipped(
                 $file,
-                $this->container->getProperty(UpgradeContainer::LATEST_PATH) . $fullpath,
+                $this->container->getProperty(UpgradeContainer::TMP_FILES_PATH) . $fullpath,
                 $process,
-                $this->container->getProperty(UpgradeContainer::LATEST_PATH)
+                $this->container->getProperty(UpgradeContainer::TMP_FILES_PATH)
             )
         );
     }

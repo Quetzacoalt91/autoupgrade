@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Parameters;
@@ -42,25 +36,28 @@ class UpgradeConfiguration extends ArrayCollection
     const PS_AUTOUP_CUSTOM_MOD_DESACT = 'PS_AUTOUP_CUSTOM_MOD_DESACT';
     const PS_AUTOUP_CHANGE_DEFAULT_THEME = 'PS_AUTOUP_CHANGE_DEFAULT_THEME';
     const PS_AUTOUP_REGEN_EMAIL = 'PS_AUTOUP_REGEN_EMAIL';
-    const PS_AUTOUP_BACKUP = 'PS_AUTOUP_BACKUP';
     const PS_AUTOUP_KEEP_IMAGES = 'PS_AUTOUP_KEEP_IMAGES';
     const PS_DISABLE_OVERRIDES = 'PS_DISABLE_OVERRIDES';
     const CHANNEL = 'channel';
+    const UPDATE_TYPE = 'update_type';
     const ARCHIVE_ZIP = 'archive_zip';
     const ARCHIVE_XML = 'archive_xml';
     const ARCHIVE_VERSION_NUM = 'archive_version_num';
+    const BACKUP_COMPLETED = 'backup_completed';
+    const INSTALLED_LANGUAGES = 'installed_languages';
 
     const CHANNEL_ONLINE = 'online';
+    const CHANNEL_ONLINE_RECOMMENDED = 'online_recommended';
     const CHANNEL_LOCAL = 'local';
 
     const UPGRADE_CONST_KEYS = [
         self::PS_AUTOUP_CUSTOM_MOD_DESACT,
         self::PS_AUTOUP_CHANGE_DEFAULT_THEME,
         self::PS_AUTOUP_REGEN_EMAIL,
-        self::PS_AUTOUP_BACKUP,
         self::PS_AUTOUP_KEEP_IMAGES,
         self::PS_DISABLE_OVERRIDES,
         self::CHANNEL,
+        self::UPDATE_TYPE,
         self::ARCHIVE_ZIP,
         self::ARCHIVE_XML,
         self::ARCHIVE_VERSION_NUM,
@@ -70,11 +67,15 @@ class UpgradeConfiguration extends ArrayCollection
         self::PS_AUTOUP_CUSTOM_MOD_DESACT => true,
         self::PS_AUTOUP_CHANGE_DEFAULT_THEME => false,
         self::PS_AUTOUP_REGEN_EMAIL => true,
-        self::PS_AUTOUP_BACKUP => true,
         self::PS_AUTOUP_KEEP_IMAGES => true,
+        self::BACKUP_COMPLETED => null,
     ];
 
-    const DEFAULT_CHANNEL = self::CHANNEL_ONLINE;
+    const CONFIGURATION_KEYS_ABOUT_SHOP = [
+        self::INSTALLED_LANGUAGES,
+    ];
+
+    const DEFAULT_CHANNEL = self::CHANNEL_ONLINE_RECOMMENDED;
     const ONLINE_CHANNEL_ZIP = 'prestashop.zip';
 
     /**
@@ -147,6 +148,32 @@ class UpgradeConfiguration extends ArrayCollection
         return $this->getChannelOrDefault() === UpgradeConfiguration::CHANNEL_ONLINE;
     }
 
+    public function isChannelOnlineRecommended(): bool
+    {
+        return $this->getChannelOrDefault() === UpgradeConfiguration::CHANNEL_ONLINE_RECOMMENDED;
+    }
+
+    /**
+     * @return 'major'|'minor'|'patch'
+     */
+    public function getUpdateType(): string
+    {
+        return $this->get(self::UPDATE_TYPE);
+    }
+
+    public function isBackupCompleted(): ?bool
+    {
+        return $this->get(self::BACKUP_COMPLETED);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getInstalledLanguagesIsoCode(): array
+    {
+        return $this->get(self::INSTALLED_LANGUAGES);
+    }
+
     /**
      * @return int Number of files to handle in a single call to avoid timeouts
      */
@@ -179,11 +206,6 @@ class UpgradeConfiguration extends ArrayCollection
         return $this::PERFORMANCE_VALUES['maxBackupFileSize'];
     }
 
-    public function shouldBackupFilesAndDatabase(): bool
-    {
-        return $this->computeBooleanConfiguration(self::PS_AUTOUP_BACKUP);
-    }
-
     /**
      * @return bool True if the autoupgrade module backup should include the images
      */
@@ -209,6 +231,8 @@ class UpgradeConfiguration extends ArrayCollection
     }
 
     /**
+     * @deprecated
+     *
      * @return bool True if we have to set the native theme by default
      */
     public function shouldSwitchToDefaultTheme(): bool
@@ -264,5 +288,16 @@ class UpgradeConfiguration extends ArrayCollection
         foreach ($array as $key => $value) {
             $this->set($key, $value);
         }
+    }
+
+    public function hasAllTheShopConfiguration(): bool
+    {
+        foreach (self::CONFIGURATION_KEYS_ABOUT_SHOP as $key) {
+            if ($this->get($key) === null) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

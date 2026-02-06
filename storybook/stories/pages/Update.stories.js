@@ -4,7 +4,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -12,20 +12,16 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 import UpdatePage from "../../../views/templates/pages/update.html.twig";
-import { Default as LogsProgress } from "../components/LogsProgress.stories";
-import { Default as Logs } from "../components/Logs.stories";
+import LogsViewer from "../../../_dev/src/ts/appUI/components/LogsViewer";
+import { Default as LogsTemplates } from "../components/LogsTemplates.stories";
+import { UpdateLogsProgress } from "../components/LogsProgress.stories";
+import { UpdateLogsViewer } from "../components/LogsViewer.stories";
 import { Update as Stepper } from "../components/Stepper.stories";
 
 export default {
@@ -45,12 +41,31 @@ export const Update = {
     logsSummaryError: [],
     downloadLogsButtonUrl: "",
     downloadLogsButtonLabel: "",
+    download_logs_type: "update",
     step_parent_id: "ua_container",
     stepper_parent_id: "stepper_content",
+    backup_available: true,
+    restore_route: "restore-page-backup-selection",
+    success_route: "update-step-post-update",
+    download_logs_route: "download-logs",
+    submit_error_report_route: "update-step-update-submit-error-report",
+    data_transparency_link:
+      "https://www.prestashop-project.org/data-transparency",
     // Logs
-    ...LogsProgress.args,
-    ...Logs.args,
+    ...UpdateLogsProgress.args,
+    ...UpdateLogsViewer.args,
     // Stepper
     ...Stepper.args,
+  },
+  play: async ({ args }) => {
+    const logsViewerElement = document.querySelector(
+      "[data-component='logs-viewer']",
+    );
+    const logsViewer = new LogsViewer(logsViewerElement);
+    logsViewer.addLogs(LogsTemplates.args.logs);
+    logsViewer.displaySummary(
+      LogsTemplates.args.logsSummaryWarning,
+      LogsTemplates.args.logsSummaryError,
+    );
   },
 };

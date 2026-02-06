@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,21 +14,16 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Task\Runner;
 
 use Exception;
 use PrestaShop\Module\AutoUpgrade\AjaxResponse;
+use PrestaShop\Module\AutoUpgrade\Database\DbWrapper;
 use PrestaShop\Module\AutoUpgrade\Task\AbstractTask;
 use PrestaShop\Module\AutoUpgrade\Task\TaskName;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\TaskRepository;
@@ -45,6 +40,11 @@ abstract class ChainedTasks extends AbstractTask
     protected $step;
 
     /**
+     * @var string
+     */
+    protected $stepClass;
+
+    /**
      * Execute all the tasks from a specific initial step, until the end (complete or error).
      *
      * @return int Return code (0 for success, any value otherwise)
@@ -58,7 +58,9 @@ abstract class ChainedTasks extends AbstractTask
         $requireRestart = false;
         while ($this->canContinue() && !$requireRestart) {
             $controller = TaskRepository::get($this->step, $this->container);
+            $this->stepClass = get_class($controller);
             $controller->init();
+            $this->disableOPCacheIfNecessary();
             $this->logger->debug('Step ' . $this->step);
             try {
                 $controller->run();
@@ -106,13 +108,95 @@ abstract class ChainedTasks extends AbstractTask
         return false;
     }
 
+    /**
+     * @throws Exception
+     */
     private function setupLogging(): void
     {
-        $initializationSteps = [TaskName::TASK_BACKUP_INITIALIZATION, TaskName::TASK_UPDATE_INITIALIZATION, TaskName::TASK_RESTORE];
+        $logsState = $this->container->getLogsState();
+        $initializationSteps = [TaskName::TASK_BACKUP_INITIALIZATION, TaskName::TASK_UPDATE_INITIALIZATION, TaskName::TASK_RESTORE_INITIALIZATION];
 
         if (in_array($this->step, $initializationSteps)) {
-            $this->container->getWorkspace()->createFolders();
-            $this->container->getState()->setProcessTimestamp(date('Y-m-d-His'));
+            if (php_sapi_name() !== 'cli') {
+                $timeZone = $this->getCoreTimezone();
+                $logsState->setTimeZone($timeZone);
+                date_default_timezone_set($timeZone);
+            }
+            $timestamp = date('Y-m-d-His');
+            switch ($this->step) {
+                case TaskName::TASK_BACKUP_INITIALIZATION:
+                    $logsState->setActiveBackupLogFromDateTime($timestamp);
+                    break;
+                case TaskName::TASK_RESTORE_INITIALIZATION:
+                    $logsState->setActiveRestoreLogFromDateTime($timestamp);
+                    break;
+                case TaskName::TASK_UPDATE_INITIALIZATION:
+                    $logsState->setActiveUpdateLogFromDateTime($timestamp);
+                    break;
+            }
+        } else {
+            $timeZone = $logsState->getTimeZone();
+            if ($timeZone) {
+                date_default_timezone_set($timeZone);
+            }
+        }
+    }
+
+    private function getCoreTimezone(): string
+    {
+        if ($this->step === TaskName::TASK_RESTORE_INITIALIZATION) {
+            $timeZone = date_default_timezone_get();
+        } else {
+            try {
+                $this->container->initPrestaShopCore();
+                $timeZone = DbWrapper::getValue('SELECT `value` FROM `' . _DB_PREFIX_ . 'configuration` WHERE `name` = \'PS_TIMEZONE\'');
+            } catch (Throwable $t) {
+                $timeZone = date_default_timezone_get();
+            }
+        }
+
+        return $timeZone;
+    }
+
+    private function disableOPCacheIfNecessary(): void
+    {
+        $disableSteps = [
+            TaskName::TASK_UPDATE_FILES,
+            TaskName::TASK_UPDATE_DATABASE,
+            TaskName::TASK_UPDATE_MODULES,
+            TaskName::TASK_RESTORE_FILES,
+            TaskName::TASK_RESTORE_DATABASE,
+        ];
+
+        $logSteps = [
+            TaskName::TASK_UPDATE_INITIALIZATION,
+            TaskName::TASK_RESTORE_INITIALIZATION,
+        ];
+
+        $allRelevantSteps = array_merge($disableSteps, $logSteps);
+
+        if (!in_array($this->step, $allRelevantSteps, true)) {
+            return;
+        }
+
+        if (!(bool) @ini_get('opcache.enable')) {
+            return;
+        }
+
+        $revalidateFrequency = (int) @ini_get('opcache.revalidate_freq');
+        $validateTimestamps = (int) @ini_get('opcache.validate_timestamps');
+
+        $needsDisabling = ($revalidateFrequency > 0 || $validateTimestamps === 0);
+        if (!$needsDisabling) {
+            return;
+        }
+
+        if (in_array($this->step, $logSteps, true)) {
+            $this->logger->debug($this->container->getTranslator()->trans('OPCache configuration will be changed for the duration of the process.'));
+        } else {
+            $this->container->resetOpcache();
+            @ini_set('opcache.revalidate_freq', '0');
+            @ini_set('opcache.validate_timestamps', '1');
         }
     }
 }

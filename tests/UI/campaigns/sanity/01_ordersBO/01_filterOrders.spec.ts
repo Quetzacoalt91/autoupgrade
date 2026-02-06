@@ -1,3 +1,21 @@
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
 import {
   // Import utils
   utilsTest,
@@ -5,6 +23,7 @@ import {
   boDashboardPage,
   boLoginPage,
   boOrdersPage,
+  modAutoupgradeBoModal,
   // Import data
   dataOrders,
   dataOrderStatuses,
@@ -16,8 +35,6 @@ import {
 import semver from 'semver';
 
 const psVersion = utilsTest.getPSVersion();
-
-const baseContext: string = 'sanity_ordersBO_filterOrders';
 
 /*
   Connect to the BO
@@ -39,18 +56,19 @@ test.describe('BO - Orders - Orders : Filter the Orders table by ID, REFERENCE, 
 
   // Steps
   test('should login in BO', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'loginBO', baseContext);
-
-    await boLoginPage.goTo(page, global.BO.URL);
+    await page.goto(global.BO.URL, {timeout: 50000});
     await boLoginPage.successLogin(page, global.BO.EMAIL, global.BO.PASSWD);
 
     const pageTitle = await boDashboardPage.getPageTitle(page);
     expect(pageTitle).toContain(boDashboardPage.pageTitle);
   });
 
-  test('should go to the \'Orders > Orders\' page', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'goToOrdersPage', baseContext);
+  test('should close update notification dialog', async () => {
+    const isDialogNotVisible = await modAutoupgradeBoModal.closeDialogUpdateNotification(page);
+    expect(isDialogNotVisible).toEqual(true);
+  });
 
+  test('should go to the \'Orders > Orders\' page', async () => {
     await boDashboardPage.goToSubMenu(
       page,
       boDashboardPage.ordersParentLink,
@@ -63,8 +81,6 @@ test.describe('BO - Orders - Orders : Filter the Orders table by ID, REFERENCE, 
   });
 
   test('should reset all filters and get number of orders', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'resetFilters1', baseContext);
-
     numberOfOrders = await boOrdersPage.resetAndGetNumberOfLines(page);
     await expect(numberOfOrders).toBeGreaterThan(0);
   });
@@ -95,8 +111,6 @@ test.describe('BO - Orders - Orders : Filter the Orders table by ID, REFERENCE, 
 
   tests.forEach((tst, index: number) => {
     test(`should filter the Orders table by '${tst.args.filterBy}' and check the result`, async () => {
-      await utilsTest.addContextItem(test.info(), 'testIdentifier', tst.args.identifier, baseContext);
-
       if (semver.lte(psVersion, '7.6.9') && index === 2) {
         await boOrdersPage.filterOrders(
           page,
@@ -118,8 +132,6 @@ test.describe('BO - Orders - Orders : Filter the Orders table by ID, REFERENCE, 
     });
 
     test(`should reset filter by '${tst.args.filterBy}'`, async () => {
-      await utilsTest.addContextItem(test.info(), 'testIdentifier', `reset_${tst.args.identifier}`, baseContext);
-
       const numberOfOrdersAfterReset = await boOrdersPage.resetAndGetNumberOfLines(page);
       await expect(numberOfOrdersAfterReset).toEqual(numberOfOrders);
     });
@@ -127,8 +139,6 @@ test.describe('BO - Orders - Orders : Filter the Orders table by ID, REFERENCE, 
 
   // Logout from BO
   test('should log out from BO', async () => {
-    await utilsTest.addContextItem(test.info(), 'testIdentifier', 'logoutBO', baseContext);
-
     await boLoginPage.logoutBO(page);
 
     const pageTitle = await boLoginPage.getPageTitle(page);

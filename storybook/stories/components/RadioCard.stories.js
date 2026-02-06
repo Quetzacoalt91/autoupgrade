@@ -4,7 +4,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -12,15 +12,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 import RadioCard from "../../../views/templates/components/radio-card.html.twig";
@@ -51,7 +45,8 @@ export const Default = {
     checked: false,
     required: false,
     title: "Radio card title",
-    message: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eros lacus, tincidunt egestas lacus ac, placerat eleifend eros.",
+    message:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eros lacus, tincidunt egestas lacus ac, placerat eleifend eros.",
     disabled: false,
     disabledMessage: "",
     badgeLabel: "",
@@ -63,6 +58,7 @@ export const Default = {
       update_value: "update",
       restore_value: "restore",
     },
+    recommended: false,
   },
 };
 
@@ -72,5 +68,10 @@ export const Requirements = {
     ...Default.args,
     checked: true,
     enableRequirementsCheck: true,
+    title: "PrestaShop 9.0.0",
+    message:
+      "The maximum version of PrestaShop to which you can update your store, based on its PHP version.",
+    badgeLabel: "Major version",
+    releaseNote: "#",
   },
 };

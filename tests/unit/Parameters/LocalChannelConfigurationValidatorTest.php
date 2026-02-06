@@ -1,4 +1,22 @@
 <?php
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
 
 use PHPUnit\Framework\TestCase;
 use PrestaShop\Module\AutoUpgrade\Parameters\LocalChannelConfigurationValidator;
@@ -23,6 +41,16 @@ class LocalChannelConfigurationValidatorTest extends TestCase
             $this->container->getPrestashopVersionService(),
             $downloadPath
         );
+    }
+
+    public function testValidateReturnsErrorIfNoConfigurationExists()
+    {
+        $data = [];
+        $result = $this->validator->validate($data);
+
+        $this->assertSame([
+            'message' => "Both 'xml' and 'zip' files attributes must be provided to use the local channel.",
+        ], $result[0]);
     }
 
     public function testValidateReturnsErrorIfZipFileDoesNotExist()
@@ -75,7 +103,7 @@ class LocalChannelConfigurationValidatorTest extends TestCase
         $result = $this->validator->validate($data);
 
         $this->assertSame([
-            'message' => 'The PrestaShop version in your archive doesn’t match the one in XML file. Please fix this issue and try again.',
+            'message' => 'The PrestaShop version in your archive doesn\'t match the one in XML file. Please fix this issue and try again.',
         ], $result[0]);
     }
 

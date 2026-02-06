@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,25 +14,20 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Controller;
 
 use PrestaShop\Module\AutoUpgrade\AjaxResponseBuilder;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
-use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeFileNames;
 use PrestaShop\Module\AutoUpgrade\Router\Routes;
+use PrestaShop\Module\AutoUpgrade\Task\TaskType;
 use PrestaShop\Module\AutoUpgrade\Twig\PageSelectors;
-use PrestaShop\Module\AutoUpgrade\Twig\UpdateSteps;
+use PrestaShop\Module\AutoUpgrade\Twig\Steps\Stepper;
+use PrestaShop\Module\AutoUpgrade\Twig\Steps\UpdateSteps;
 use PrestaShop\Module\AutoUpgrade\Twig\ValidatorToFormFormater;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
@@ -55,10 +50,12 @@ class UpdatePageUpdateOptionsController extends AbstractPageWithStepController
         return Routes::UPDATE_PAGE_UPDATE_OPTIONS;
     }
 
+    /**
+     * @throws \Exception
+     */
     public function saveOption(): JsonResponse
     {
-        $upgradeConfiguration = $this->upgradeContainer->getUpgradeConfiguration();
-        $upgradeConfigurationStorage = $this->upgradeContainer->getUpgradeConfigurationStorage();
+        $updateConfiguration = $this->upgradeContainer->getUpdateConfiguration();
 
         $config = [
             UpgradeConfiguration::PS_AUTOUP_CUSTOM_MOD_DESACT => $this->request->request->getBoolean(UpgradeConfiguration::PS_AUTOUP_CUSTOM_MOD_DESACT, false),
@@ -69,12 +66,12 @@ class UpdatePageUpdateOptionsController extends AbstractPageWithStepController
         $errors = $this->upgradeContainer->getConfigurationValidator()->validate($config);
 
         if (empty($errors)) {
-            if (isset($config[UpgradeConfiguration::PS_DISABLE_OVERRIDES])) {
-                $this->upgradeContainer->initPrestaShopCore();
-                UpgradeConfiguration::updatePSDisableOverrides($config[UpgradeConfiguration::PS_DISABLE_OVERRIDES]);
-            }
-            $upgradeConfiguration->merge($config);
-            $upgradeConfigurationStorage->save($upgradeConfiguration, UpgradeFileNames::CONFIG_FILENAME);
+            // One specific option requires the Core to store the value in database.
+            $this->upgradeContainer->initPrestaShopCore();
+            UpgradeConfiguration::updatePSDisableOverrides($config[UpgradeConfiguration::PS_DISABLE_OVERRIDES]);
+
+            $updateConfiguration->merge($config);
+            $this->upgradeContainer->getConfigurationStorage()->save($updateConfiguration);
         }
 
         return $this->getRefreshOfForm(array_merge(
@@ -85,19 +82,19 @@ class UpdatePageUpdateOptionsController extends AbstractPageWithStepController
 
     public function submit(): JsonResponse
     {
-        return AjaxResponseBuilder::nextRouteResponse(Routes::UPDATE_PAGE_BACKUP);
+        return AjaxResponseBuilder::nextRouteResponse(Routes::UPDATE_STEP_BACKUP_OPTIONS);
     }
 
     /**
-     * @return array
+     * @return array<string, mixed>
      *
      * @throws \Exception
      */
     protected function getParams(): array
     {
         $this->upgradeContainer->initPrestaShopCore();
-        $upgradeConfiguration = $this->upgradeContainer->getUpgradeConfiguration();
-        $updateSteps = new UpdateSteps($this->upgradeContainer->getTranslator());
+        $updateConfiguration = $this->upgradeContainer->getConfigurationStorage()->loadUpdateConfiguration();
+        $updateSteps = new Stepper($this->upgradeContainer->getTranslator(), TaskType::TASK_TYPE_UPDATE);
 
         return array_merge(
             $updateSteps->getStepParams(self::CURRENT_STEP),
@@ -108,21 +105,24 @@ class UpdatePageUpdateOptionsController extends AbstractPageWithStepController
                 'form_fields' => [
                     'deactive_non_native_modules' => [
                         'field' => UpgradeConfiguration::PS_AUTOUP_CUSTOM_MOD_DESACT,
-                        'value' => $upgradeConfiguration->shouldDeactivateCustomModules(),
+                        'value' => $updateConfiguration->shouldDeactivateCustomModules(),
                     ],
                     'regenerate_email_templates' => [
                         'field' => UpgradeConfiguration::PS_AUTOUP_REGEN_EMAIL,
-                        'value' => $upgradeConfiguration->shouldRegenerateMailTemplates(),
+                        'value' => $updateConfiguration->shouldRegenerateMailTemplates(),
                     ],
                     'disable_all_overrides' => [
                         'field' => UpgradeConfiguration::PS_DISABLE_OVERRIDES,
-                        'value' => !$upgradeConfiguration->isOverrideAllowed(),
+                        'value' => !$updateConfiguration->isOverrideAllowed(),
                     ],
                 ],
             ]
         );
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     private function getRefreshOfForm(array $params): JsonResponse
     {
         return AjaxResponseBuilder::hydrationResponse(
@@ -131,7 +131,7 @@ class UpdatePageUpdateOptionsController extends AbstractPageWithStepController
                 '@ModuleAutoUpgrade/steps/' . $this->getStepTemplate() . '.html.twig',
                 $params
             ),
-            $this->displayRouteInUrl()
+            ['newRoute' => $this->displayRouteInUrl()]
         );
     }
 }

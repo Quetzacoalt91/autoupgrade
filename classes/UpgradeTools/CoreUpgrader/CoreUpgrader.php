@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\UpgradeTools\CoreUpgrader;
@@ -32,6 +26,7 @@ use Exception;
 use InvalidArgumentException;
 use Language;
 use ParseError;
+use PrestaShop\Module\AutoUpgrade\Database\MysqlErrorCode;
 use PrestaShop\Module\AutoUpgrade\Exceptions\UpdateDatabaseException;
 use PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException;
 use PrestaShop\Module\AutoUpgrade\Log\LoggerInterface;
@@ -43,6 +38,9 @@ use PrestaShop\PrestaShop\Core\Domain\Theme\Command\AdaptThemeToRTLLanguagesComm
 use PrestaShop\PrestaShop\Core\Domain\Theme\ValueObject\ThemeName;
 use PrestaShop\PrestaShop\Core\Exception\CoreException;
 use PrestaShop\PrestaShop\Core\Localization\RTL\Processor as RtlStylesheetProcessor;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -67,11 +65,6 @@ abstract class CoreUpgrader
     protected $logger;
 
     /**
-     * @var Filesystem
-     */
-    private $filesystem;
-
-    /**
      * Version PrestaShop is upgraded to.
      *
      * @var string
@@ -92,15 +85,20 @@ abstract class CoreUpgrader
      */
     protected $pathToUpgradeScripts;
 
+    /**
+     * @var Filesystem
+     */
+    protected $fileSystem;
+
     public function __construct(UpgradeContainer $container, LoggerInterface $logger)
     {
         $this->container = $container;
+        $this->fileSystem = $this->container->getFileSystem();
         $this->logger = $logger;
-        $this->filesystem = new Filesystem();
-        $this->destinationUpgradeVersion = $this->container->getState()->getDestinationVersion();
-        $this->pathToInstallFolder = realpath($this->container->getProperty(UpgradeContainer::LATEST_PATH) . DIRECTORY_SEPARATOR . 'install');
+        $this->destinationUpgradeVersion = $this->container->getUpdateState()->getDestinationVersion();
+        $this->pathToInstallFolder = realpath($this->container->getProperty(UpgradeContainer::TMP_FILES_PATH) . DIRECTORY_SEPARATOR . 'install');
         $this->pathToUpgradeScripts = dirname(__DIR__, 3) . '/upgrade/';
-        if (file_exists($this->pathToInstallFolder . DIRECTORY_SEPARATOR . 'autoload.php')) {
+        if ($this->fileSystem->exists($this->pathToInstallFolder . DIRECTORY_SEPARATOR . 'autoload.php')) {
             require_once $this->pathToInstallFolder . DIRECTORY_SEPARATOR . 'autoload.php';
         }
         $this->db = \Db::getInstance();
@@ -124,9 +122,11 @@ abstract class CoreUpgrader
         $this->logger->info($this->container->getTranslator()->trans('Running generic queries'));
         $this->runRecurrentQueries();
 
-        $this->logger->info($this->container->getTranslator()->trans('Database upgrade OK')); // no error!
+        $this->logger->info($this->container->getTranslator()->trans('Database update OK')); // no error!
 
-        $this->logger->info($this->container->getTranslator()->trans('Upgrading languages'));
+        $this->installAssets();
+
+        $this->logger->info($this->container->getTranslator()->trans('Updating languages'));
         $this->upgradeLanguages();
 
         $this->logger->info($this->container->getTranslator()->trans('Regenerating htaccess'));
@@ -146,10 +146,10 @@ abstract class CoreUpgrader
 
         $this->runCoreCacheClean();
 
-        if ($this->container->getState()->getWarningExists()) {
-            $this->logger->warning($this->container->getTranslator()->trans('Warning detected during upgrade.'));
+        if ($this->container->getUpdateState()->isWarningDetected()) {
+            $this->logger->warning($this->container->getTranslator()->trans('Warning detected during update.'));
         } else {
-            $this->logger->info($this->container->getTranslator()->trans('Database upgrade completed'));
+            $this->logger->info($this->container->getTranslator()->trans('Database update completed'));
         }
     }
 
@@ -234,9 +234,6 @@ abstract class CoreUpgrader
         if (!defined('_PS_INSTALLER_PHP_UPGRADE_DIR_')) {
             define('_PS_INSTALLER_PHP_UPGRADE_DIR_', $this->pathToUpgradeScripts . 'php/');
         }
-        if (function_exists('date_default_timezone_set')) {
-            date_default_timezone_set('Europe/Paris');
-        }
 
         // if _PS_ROOT_DIR_ is defined, use it instead of "guessing" the module dir.
         if (defined('_PS_ROOT_DIR_') && !defined('_PS_MODULE_DIR_')) {
@@ -271,7 +268,7 @@ abstract class CoreUpgrader
      */
     protected function getUpgradeSqlFilesListToApply(string $upgrade_dir_sql, string $oldversion): array
     {
-        if (!file_exists($upgrade_dir_sql)) {
+        if (!$this->fileSystem->exists($upgrade_dir_sql)) {
             throw new UpgradeException($this->container->getTranslator()->trans('Unable to find upgrade directory in the installation path.'));
         }
 
@@ -424,7 +421,7 @@ abstract class CoreUpgrader
             $func_name = str_replace($stringParameters, '', $php[0]);
             $pathToPhpDirectory = $this->pathToUpgradeScripts . 'php/';
 
-            if (!file_exists($pathToPhpDirectory . strtolower($func_name) . '.php')) {
+            if (!$this->fileSystem->exists($pathToPhpDirectory . strtolower($func_name) . '.php')) {
                 $this->logMissingFileError($pathToPhpDirectory, $func_name, $query);
 
                 return;
@@ -449,7 +446,7 @@ abstract class CoreUpgrader
                 (empty($phpRes['msg']) ? '' : ' - ' . $phpRes['msg'] . "\n");
             $this->logPhpError($upgrade_file, $query, $message);
         } else {
-            $this->logger->debug('Migration file: ' . $upgrade_file . ', Query: ' . $query);
+            $this->logger->debug($this->container->getTranslator()->trans('Migration file: %s, Query: %s', [$upgrade_file, $query]));
         }
     }
 
@@ -465,20 +462,20 @@ abstract class CoreUpgrader
 
     private function logPhpError(string $upgrade_file, string $query, string $message): void
     {
-        $this->logger->error('PHP ' . $upgrade_file . ' ' . $query . ": \n" . $message);
-        $this->container->getState()->setWarningExists(true);
+        $this->logger->warning('PHP ' . $upgrade_file . ' ' . $query . ": \n" . $message);
+        $this->container->getUpdateState()->setWarningDetected(true);
     }
 
     private function logMissingFileError(string $path, string $func_name, string $query): void
     {
-        $this->logger->error($path . strtolower($func_name) . ' PHP - missing file ' . $query);
-        $this->container->getState()->setWarningExists(true);
+        $this->logger->warning($this->container->getTranslator()->trans('%s PHP - missing file %s', [$path . strtolower($func_name), $query]));
+        $this->container->getUpdateState()->setWarningDetected(true);
     }
 
     private function logForbiddenObjectMethodError(string $phpString, string $upgrade_file): void
     {
-        $this->logger->error($upgrade_file . ' PHP - Object Method call is forbidden (' . $phpString . ')');
-        $this->container->getState()->setWarningExists(true);
+        $this->logger->warning($this->container->getTranslator()->trans('%s PHP - Object Method call is forbidden (%s)', [$upgrade_file, $phpString]));
+        $this->container->getUpdateState()->setWarningDetected(true);
     }
 
     protected function runSqlQuery(string $upgrade_file, string $query): void
@@ -489,13 +486,13 @@ abstract class CoreUpgrader
             if (!empty($matches[1])) {
                 $drop = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . $matches[1] . '`;';
                 if ($this->db->execute($drop, false)) {
-                    $this->logger->debug($this->container->getTranslator()->trans('[DROP] SQL %s table has been dropped.', ['`' . _DB_PREFIX_ . $matches[1] . '`']));
+                    $this->logger->debug($this->container->getTranslator()->trans('SQL %s table has been dropped.', ['`' . _DB_PREFIX_ . $matches[1] . '`']));
                 }
             }
         }
 
         if ($this->db->execute($query, false)) {
-            $this->logger->debug('Migration file: ' . $upgrade_file . ', Query: ' . $query);
+            $this->logger->debug($this->container->getTranslator()->trans('Migration file: %s, Query: %s', [$upgrade_file, $query]));
 
             return;
         }
@@ -503,13 +500,21 @@ abstract class CoreUpgrader
         $error = $this->db->getMsgError();
         $error_number = $this->db->getNumberError();
 
-        $this->logger->warning('Error occurred during the execution of a query: ' . $error_number . ', ' . $error);
-        $this->logger->warning('Migration file: ' . $upgrade_file . ', Query: ' . $query);
-
-        $duplicates = ['1050', '1054', '1060', '1061', '1062', '1091'];
+        $duplicates = [
+            MysqlErrorCode::TABLE_ALREADY_EXISTS,
+            MysqlErrorCode::UNKNOWN_COLUMN_IN_FIELD_LIST,
+            MysqlErrorCode::DUPLICATE_COLUMN_NAME,
+            MysqlErrorCode::DUPLICATE_KEY,
+            MysqlErrorCode::DUPLICATE_ENTRY,
+            MysqlErrorCode::CANNOT_DROP_KEY,
+        ];
         if (!in_array($error_number, $duplicates)) {
-            $this->logger->error('SQL ' . $upgrade_file . ' ' . $error_number . ' in ' . $query . ': ' . $error);
-            $this->container->getState()->setWarningExists(true);
+            $this->logger->warning($this->container->getTranslator()->trans('The execution of the query failed: %s, %s', [$error_number, $error]));
+            $this->logger->warning($this->container->getTranslator()->trans('Migration file: %s, Query: %s', [$upgrade_file, $query]));
+            $this->container->getUpdateState()->setWarningDetected(true);
+        } else {
+            $this->logger->debug($this->container->getTranslator()->trans('The execution of the query failed: %s, %s. This error code can be safely ignored.', [$error_number, $error]));
+            $this->logger->debug($this->container->getTranslator()->trans('Migration file: %s, Query: %s', [$upgrade_file, $query]));
         }
     }
 
@@ -566,10 +571,11 @@ abstract class CoreUpgrader
     {
         $this->loadEntityInterface();
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Tools.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Tools.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Tools.php';
         }
 
+        // @phpstan-ignore function.alreadyNarrowedType (Some PrestaShop may not have this method)
         if (!class_exists('ToolsCore') || !method_exists('ToolsCore', 'generateHtaccess')) {
             return;
         }
@@ -583,105 +589,105 @@ abstract class CoreUpgrader
             define('_PS_USE_SQL_SLAVE_', false);
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/ObjectModel.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/ObjectModel.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/ObjectModel.php';
         }
         if (!class_exists('ObjectModel', false) && class_exists('ObjectModelCore')) {
             eval('abstract class ObjectModel extends ObjectModelCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Configuration.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Configuration.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Configuration.php';
         }
         if (!class_exists('Configuration', false) && class_exists('ConfigurationCore')) {
             eval('class Configuration extends ConfigurationCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/cache/Cache.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/cache/Cache.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/cache/Cache.php';
         }
         if (!class_exists('Cache', false) && class_exists('CacheCore')) {
             eval('abstract class Cache extends CacheCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/PrestaShopCollection.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/PrestaShopCollection.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/PrestaShopCollection.php';
         }
         if (!class_exists('PrestaShopCollection', false) && class_exists('PrestaShopCollectionCore')) {
             eval('class PrestaShopCollection extends PrestaShopCollectionCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/shop/ShopUrl.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/shop/ShopUrl.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/shop/ShopUrl.php';
         }
         if (!class_exists('ShopUrl', false) && class_exists('ShopUrlCore')) {
             eval('class ShopUrl extends ShopUrlCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/shop/Shop.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/shop/Shop.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/shop/Shop.php';
         }
         if (!class_exists('Shop', false) && class_exists('ShopCore')) {
             eval('class Shop extends ShopCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Translate.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Translate.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Translate.php';
         }
         if (!class_exists('Translate', false) && class_exists('TranslateCore')) {
             eval('class Translate extends TranslateCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/module/Module.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/module/Module.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/module/Module.php';
         }
         if (!class_exists('Module', false) && class_exists('ModuleCore')) {
             eval('class Module extends ModuleCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Validate.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Validate.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Validate.php';
         }
         if (!class_exists('Validate', false) && class_exists('ValidateCore')) {
             eval('class Validate extends ValidateCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Language.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Language.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Language.php';
         }
         if (!class_exists('Language', false) && class_exists('LanguageCore')) {
             eval('class Language extends LanguageCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Tab.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Tab.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Tab.php';
         }
         if (!class_exists('Tab', false) && class_exists('TabCore')) {
             eval('class Tab extends TabCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Dispatcher.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Dispatcher.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Dispatcher.php';
         }
         if (!class_exists('Dispatcher', false) && class_exists('DispatcherCore')) {
             eval('class Dispatcher extends DispatcherCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Hook.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Hook.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Hook.php';
         }
         if (!class_exists('Hook', false) && class_exists('HookCore')) {
             eval('class Hook extends HookCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Context.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Context.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Context.php';
         }
         if (!class_exists('Context', false) && class_exists('ContextCore')) {
             eval('class Context extends ContextCore{}');
         }
 
-        if (file_exists(_PS_ROOT_DIR_ . '/classes/Group.php')) {
+        if ($this->fileSystem->exists(_PS_ROOT_DIR_ . '/classes/Group.php')) {
             require_once _PS_ROOT_DIR_ . '/classes/Group.php';
         }
         if (!class_exists('Group', false) && class_exists('GroupCore')) {
@@ -703,9 +709,6 @@ abstract class CoreUpgrader
     {
         $files = [
             $this->container->getProperty(UpgradeContainer::PS_ADMIN_PATH) . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'template' . DIRECTORY_SEPARATOR . 'controllers' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . 'header.tpl',
-            _PS_ROOT_DIR_ . '/app/cache/dev/class_index.php',
-            _PS_ROOT_DIR_ . '/app/cache/prod/class_index.php',
-            _PS_ROOT_DIR_ . '/cache/class_index.php',
             _PS_ROOT_DIR_ . '/config/xml/blog-fr.xml',
             _PS_ROOT_DIR_ . '/config/xml/default_country_modules_list.xml',
             _PS_ROOT_DIR_ . '/config/xml/modules_list.xml',
@@ -714,12 +717,10 @@ abstract class CoreUpgrader
             _PS_ROOT_DIR_ . '/config/xml/tab_modules_list.xml',
             _PS_ROOT_DIR_ . '/config/xml/trusted_modules_list.xml',
             _PS_ROOT_DIR_ . '/config/xml/untrusted_modules_list.xml',
-            _PS_ROOT_DIR_ . '/var/cache/dev/class_index.php',
-            _PS_ROOT_DIR_ . '/var/cache/prod/class_index.php',
         ];
         foreach ($files as $path) {
-            if (file_exists($path)) {
-                unlink($path);
+            if ($this->fileSystem->exists($path)) {
+                $this->fileSystem->remove($path);
             }
         }
     }
@@ -744,11 +745,12 @@ abstract class CoreUpgrader
 
     /**
      * @throws UpgradeException
+     * @throws \Exception
      */
     protected function switchToDefaultTheme(): void
     {
         // The merchant can ask for keeping its current theme.
-        if (!$this->container->getUpgradeConfiguration()->shouldSwitchToDefaultTheme()) {
+        if (!$this->container->getUpdateConfiguration()->shouldSwitchToDefaultTheme()) {
             $this->logger->info($this->container->getTranslator()->trans('Keeping current theme'));
 
             return;
@@ -778,7 +780,7 @@ abstract class CoreUpgrader
 
         // BO theme
         if (class_exists(RtlStylesheetProcessor::class)) {
-            $this->logger->info($this->container->getTranslator()->trans('Upgrade the RTL files of back-office themes.'));
+            $this->logger->info($this->container->getTranslator()->trans('Update the RTL files of back-office themes.'));
 
             $this->removeExistingRTLFiles([
                 ['directory' => $this->container->getProperty(UpgradeContainer::PS_ADMIN_PATH) . DIRECTORY_SEPARATOR . 'themes'],
@@ -799,7 +801,7 @@ abstract class CoreUpgrader
             return;
         }
 
-        $this->logger->info($this->container->getTranslator()->trans('Upgrade the RTL files of front-office themes.'));
+        $this->logger->info($this->container->getTranslator()->trans('Update the RTL files of front-office themes.'));
         $themeAdapter = new ThemeAdapter($this->db);
 
         $themes = $themeAdapter->getListFromDisk();
@@ -816,12 +818,9 @@ abstract class CoreUpgrader
             try {
                 $commandBus->handle($adaptThemeToTRLLanguages);
             } catch (CoreException $e) {
-                $this->logger->error('
-                    PHP Impossible to generate RTL files for theme' . $theme['name'] . "\n" .
-                    $e->getMessage()
-                );
+                $this->logger->warning($this->container->getTranslator()->trans('PHP Impossible to generate RTL files for theme %s: %s', [$theme['name'], $e->getMessage()]));
 
-                $this->container->getState()->setWarningExists(true);
+                $this->container->getUpdateState()->setWarningDetected(true);
             }
         }
     }
@@ -833,7 +832,7 @@ abstract class CoreUpgrader
     {
         foreach ($themes as $theme) {
             $files = $this->container->getFilesystemAdapter()->listSampleFiles($theme['directory'], '_rtl.css');
-            $this->filesystem->remove($files);
+            $this->fileSystem->remove($files);
         }
     }
 
@@ -864,15 +863,50 @@ abstract class CoreUpgrader
     public function warmupCoreCache(): void
     {
         $rootPath = $this->container->getProperty(UpgradeContainer::PS_ROOT_PATH);
-        $command = 'php ' . $rootPath . '/bin/console cache:warmup --no-interaction --env=prod';
+        $command = 'php ' . $rootPath . '/bin/console cache:warmup --no-interaction --no-optional-warmers --env=prod';
         $output = [];
         $resultCode = 0;
 
         exec($command, $output, $resultCode);
 
         if ($resultCode !== 0) {
-            throw new UpgradeException("An error was raised when warming up the core cache: \n" . implode("\n", $output));
+            throw new UpgradeException($this->container->getTranslator()->trans("An error was raised when warming up the core cache: \n %s", [implode("\n", $output)]));
         }
-        $this->logger->debug('Core cache has been generated to avoid dependency conflicts.');
+        $this->logger->debug($this->container->getTranslator()->trans('Core cache has been generated to avoid dependency conflicts.'));
+    }
+
+    /**
+     * PrestaShop 9.0.1 adds an helper function that runs "assets:install".
+     * It install some bundles assets via symlink or hard copy if symlink aren't possible in this environment.
+     */
+    private function installAssets(): void
+    {
+        if (!class_exists('PrestaShop\PrestaShop\Adapter\Bundle\AssetsInstaller')) {
+            // Nothing to do if the class does not exist in the version we update to.
+            return;
+        }
+
+        $this->logger->info($this->container->getTranslator()->trans('Installing assets'));
+
+        // Calling PrestaShop\PrestaShop\Adapter\Bundle\AssetsInstaller::installAssets() is impossible at the time of writing of this method.
+        // Attempting to call it from Update Assistant v7 triggers a collision between the versions of the package symfony/console provided
+        // by the core and Update Assistant. We duplicate the called method content and avoid PrestaShopApplication class.
+
+        $adminSubDir = $this->container->getProperty(UpgradeContainer::PS_ADMIN_SUBDIR);
+
+        $kernel = $this->container->getSymfonyAdapter()->initKernel();
+        $application = new Application($kernel);
+        $application->setAutoExit(false);
+
+        $output = new BufferedOutput();
+        $errorCode = $application->run(new ArrayInput([
+            'command' => 'assets:install',
+            'target' => $adminSubDir,
+            '--symlink' => function_exists('symlink'),
+        ]), $output);
+
+        if ($errorCode !== 0) {
+            throw new UpgradeException($this->container->getTranslator()->trans("A code %d was returned while installing assets: \n %s", [$errorCode, $output->fetch()]));
+        }
     }
 }

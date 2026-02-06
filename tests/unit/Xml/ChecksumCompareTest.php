@@ -5,7 +5,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -13,21 +13,25 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 use PHPUnit\Framework\TestCase;
 use PrestaShop\Module\AutoUpgrade\UpgradeContainer;
+use PrestaShop\Module\AutoUpgrade\UpgradeTools\FilesystemAdapter;
+use PrestaShop\Module\AutoUpgrade\Xml\ChecksumCompare;
+use PrestaShop\Module\AutoUpgrade\Xml\FileLoader;
 
 class ChecksumCompareTest extends TestCase
 {
+    public function setUp()
+    {
+        if (PHP_VERSION_ID >= 80000) {
+            $this->markTestSkipped('An issue with this version of PHPUnit and PHP 8+ prevents this test to run.');
+        }
+    }
+
     public function testCompareReleases()
     {
         // Simplest test
@@ -68,5 +72,71 @@ class ChecksumCompareTest extends TestCase
             ],
         ];
         $this->assertEquals($expected, $actual);
+    }
+
+    public function testGetTamperedFilesOnShop()
+    {
+        $fileSystemAdapter = $this->getMockBuilder(FilesystemAdapter::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $fileLoader = $this->getMockBuilder(FileLoader::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getXmlMd5File'])
+            ->getMock();
+
+        $xmlFile = @simplexml_load_file(__DIR__ . '/../../fixtures/checksum-compare/8.1.0.xml');
+
+        $fileLoader->method('getXmlMd5File')
+            ->willReturn($xmlFile);
+
+        $checksumCompare = new ChecksumCompare($fileLoader, $fileSystemAdapter, __DIR__ . '/../../fixtures/checksum-compare/8.1.0', __DIR__ . '/../../fixtures/checksum-compare/8.1.0/adminTest');
+        $tamperedFiles = $checksumCompare->getTamperedFilesOnShop('8.1.0');
+
+        $expected = [
+            ChecksumCompare::CATEGORY_MAIL => [ChecksumCompare::FILE_MISSING => [], ChecksumCompare::FILE_ALTERED => []],
+            ChecksumCompare::CATEGORY_TRANSLATION => [ChecksumCompare::FILE_MISSING => [], ChecksumCompare::FILE_ALTERED => ['translations/default/AdminActions.xlf']],
+            ChecksumCompare::CATEGORY_CORE => [ChecksumCompare::FILE_MISSING => ['admin/init.php'], ChecksumCompare::FILE_ALTERED => ['admin/.htaccess']],
+            ChecksumCompare::CATEGORY_THEME => [ChecksumCompare::FILE_MISSING => [], ChecksumCompare::FILE_ALTERED => ['themes/classic/config/theme.yml']],
+        ];
+
+        $this->assertEquals($expected, $tamperedFiles);
+    }
+
+    /**
+     * Test that admin-api files are not incorrectly reported as missing
+     * when admin folder has been renamed (bug from issue #40035)
+     */
+    public function testAdminApiFilesNotReportedAsMissingWithCustomAdminFolder()
+    {
+        $fileSystemAdapter = $this->getMockBuilder(FilesystemAdapter::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $fileLoader = $this->getMockBuilder(FileLoader::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getXmlMd5File'])
+            ->getMock();
+
+        $xmlFile = @simplexml_load_file(__DIR__ . '/../../fixtures/checksum-compare/9.0.0.xml');
+
+        $fileLoader->method('getXmlMd5File')
+            ->willReturn($xmlFile);
+
+        // Use custom admin folder name to simulate real PrestaShop setup
+        $checksumCompare = new ChecksumCompare(
+            $fileLoader,
+            $fileSystemAdapter,
+            __DIR__ . '/../../fixtures/checksum-compare/9.0.0',
+            __DIR__ . '/../../fixtures/checksum-compare/9.0.0/admin120df7jyx6dk20p2ehq'
+        );
+        $tamperedFiles = $checksumCompare->getTamperedFilesOnShop('9.0.0');
+
+        // admin-api files should NOT be reported as missing
+        // The bug was that str_replace would match "admin" in "admin-api"
+        // and create incorrect paths like "admin120df7jyx6dk20p2ehq-api"
+        $missingFiles = $tamperedFiles[ChecksumCompare::CATEGORY_CORE][ChecksumCompare::FILE_MISSING];
+        $this->assertNotContains('admin-api/index.php', $missingFiles, 'admin-api files should not be reported as missing when admin folder is renamed');
+        $this->assertNotContains('admin-api/.htaccess', $missingFiles, 'admin-api files should not be reported as missing when admin folder is renamed');
     }
 }

@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\UpgradeTools\Module;
@@ -31,24 +25,26 @@ use LogicException;
 use PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException;
 use PrestaShop\Module\AutoUpgrade\Log\Logger;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Translator;
+use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Filesystem\Filesystem;
 use Throwable;
 
 class ModuleMigration
 {
+    /** @var Filesystem */
+    private $filesystem;
+
     /** @var Translator */
     private $translator;
 
     /** @var Logger */
     private $logger;
 
-    /** @var string */
-    private $sandboxFolder;
-
-    public function __construct(Translator $translator, Logger $logger, string $sandboxFolder)
+    public function __construct(Filesystem $filesystem, Translator $translator, Logger $logger)
     {
+        $this->filesystem = $filesystem;
         $this->translator = $translator;
         $this->logger = $logger;
-        $this->sandboxFolder = $sandboxFolder;
     }
 
     public function needMigration(ModuleMigrationContext $moduleMigrationContext): bool
@@ -71,10 +67,10 @@ class ModuleMigration
     public function listUpgradeFiles(ModuleMigrationContext $moduleMigrationContext): array
     {
         if ($moduleMigrationContext->getDbVersion() === '0') {
-            $this->logger->notice($this->translator->trans('No version present in database for module %s, all files for upgrade will be applied.', [$moduleMigrationContext->getModuleName()]));
+            $this->logger->notice($this->translator->trans('No version present in database for module %s, all files for update will be applied.', [$moduleMigrationContext->getModuleName()]));
         }
 
-        $files = glob($moduleMigrationContext->getUpgradeFilesRootPath() . '/*.php', GLOB_BRACE);
+        $files = glob($moduleMigrationContext->getUpgradeFilesRootPath() . '/*.php');
 
         $upgradeFiles = [];
 
@@ -111,14 +107,14 @@ class ModuleMigration
 
             try {
                 if (!$this->loadAndCallFunction($migrationFilePath, $methodName, $moduleMigrationContext)) {
-                    throw (new UpgradeException($this->translator->trans('[WARNING] Migration failed while running the file %s. Module %s disabled.', [basename($migrationFilePath), $moduleMigrationContext->getModuleName()])))->setSeverity(UpgradeException::SEVERITY_WARNING);
+                    throw (new UpgradeException($this->translator->trans('Migration failed while running the file %s. Module %s disabled.', [basename($migrationFilePath), $moduleMigrationContext->getModuleName()])))->setSeverity(UpgradeException::SEVERITY_WARNING);
                 }
             } catch (UpgradeException $e) {
                 $moduleMigrationContext->getModuleInstance()->disable();
                 throw $e;
             } catch (Throwable $t) {
                 $moduleMigrationContext->getModuleInstance()->disable();
-                throw (new UpgradeException($this->translator->trans('[WARNING] Unexpected error when trying to upgrade module %s. Module %s disabled.', [$moduleMigrationContext->getModuleName(), $moduleMigrationContext->getModuleName()]), 0, $t))->setSeverity(UpgradeException::SEVERITY_WARNING);
+                throw (new UpgradeException($this->translator->trans('Unexpected issue when trying to upgrade module %s. Module %s disabled.', [$moduleMigrationContext->getModuleName(), $moduleMigrationContext->getModuleName()]), 0, $t))->setSeverity(UpgradeException::SEVERITY_WARNING);
             }
         }
     }
@@ -129,7 +125,7 @@ class ModuleMigration
     public function saveVersionInDb(ModuleMigrationContext $moduleMigrationContext): void
     {
         if (!\Module::upgradeModuleVersion($moduleMigrationContext->getModuleName(), $moduleMigrationContext->getLocalVersion())) {
-            throw (new UpgradeException($this->translator->trans('[WARNING] Module %s version could not be updated. Database might be unavailable.', [$moduleMigrationContext->getModuleName()]), 0))->setSeverity(UpgradeException::SEVERITY_WARNING);
+            throw (new UpgradeException($this->translator->trans('Module %s version could not be updated. Database might be unavailable.', [$moduleMigrationContext->getModuleName()]), 0))->setSeverity(UpgradeException::SEVERITY_WARNING);
         }
     }
 
@@ -153,18 +149,27 @@ class ModuleMigration
     {
         $uniqueMethodName = $moduleMigrationContext->getModuleName() . '_' . $methodName;
 
-        $sandboxedFilePath = $this->sandboxFolder . DIRECTORY_SEPARATOR . $uniqueMethodName . '.php';
-        $pushedFileContents = file_put_contents($sandboxedFilePath, str_replace($methodName, $uniqueMethodName, file_get_contents($filePath)));
+        $updateDirectory = dirname($filePath);
+        $sandboxedFilePath = $updateDirectory . DIRECTORY_SEPARATOR . $uniqueMethodName . '.php';
 
-        if ($pushedFileContents === false) {
-            throw (new UpgradeException($this->translator->trans('[WARNING] Could not write temporary file %s.', [$sandboxedFilePath])))->setSeverity(UpgradeException::SEVERITY_WARNING);
+        try {
+            ob_start();
+            $this->filesystem->dumpFile($sandboxedFilePath, str_replace($methodName, $uniqueMethodName, file_get_contents($filePath)));
+
+            require_once $sandboxedFilePath;
+            if (!function_exists($uniqueMethodName)) {
+                throw (new UpgradeException($this->translator->trans('Method %s does not exist. Module %s disabled.', [$uniqueMethodName, $moduleMigrationContext->getModuleName()])))->setSeverity(UpgradeException::SEVERITY_WARNING);
+            }
+
+            return call_user_func($uniqueMethodName, $moduleMigrationContext->getModuleInstance());
+        } catch (IOException $e) {
+            throw (new UpgradeException($this->translator->trans('Could not write temporary file %s.', [$sandboxedFilePath])))->setSeverity(UpgradeException::SEVERITY_WARNING);
+        } finally {
+            $this->filesystem->remove($sandboxedFilePath);
+            // If the module echoed during the migration, we catch it in the logger.
+            // This avoids the error "headers already sent" as well if the next migration needs headers.
+            $this->logger->debug(ob_get_contents());
+            ob_end_clean();
         }
-
-        require_once $sandboxedFilePath;
-        if (!function_exists($uniqueMethodName)) {
-            throw (new UpgradeException($this->translator->trans('[WARNING] Method %s does not exist. Module %s disabled.', [$uniqueMethodName, $moduleMigrationContext->getModuleName()])))->setSeverity(UpgradeException::SEVERITY_WARNING);
-        }
-
-        return call_user_func($uniqueMethodName, $moduleMigrationContext->getModuleInstance());
     }
 }

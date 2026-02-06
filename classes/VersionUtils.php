@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade;
@@ -41,6 +35,7 @@ class VersionUtils
      */
     public static function getHumanReadableVersionOf($versionInt)
     {
+        // @phpstan-ignore function.alreadyNarrowedType (Defined in PHPDoc but not checked on runtime)
         if (!is_int($versionInt)) {
             throw new InvalidArgumentException('Version must be an integer.');
         }
@@ -67,6 +62,7 @@ class VersionUtils
      */
     public static function getPhpVersionId($version)
     {
+        // @phpstan-ignore function.alreadyNarrowedType (Defined in PHPDoc but not checked on runtime)
         if (!is_string($version)) {
             throw new InvalidArgumentException('Version must be a string.');
         }
@@ -110,6 +106,7 @@ class VersionUtils
      */
     public static function isActualPHPVersionCompatible()
     {
+        // @phpstan-ignore greaterOrEqual.alwaysTrue (This code can be run with incompatible PHP versions)
         return PHP_VERSION_ID >= self::MODULE_COMPATIBLE_PHP_VERSION;
     }
 
@@ -141,6 +138,7 @@ class VersionUtils
      */
     public static function splitPrestaShopVersion($version)
     {
+        // @phpstan-ignore function.alreadyNarrowedType (Defined in PHPDoc but not checked on runtime)
         if (!is_string($version)) {
             throw new InvalidArgumentException('Version must be a string.');
         }

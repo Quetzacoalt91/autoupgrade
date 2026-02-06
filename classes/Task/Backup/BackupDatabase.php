@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,21 +14,16 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Task\Backup;
 
 use Exception;
 use PDO;
+use PrestaShop\Module\AutoUpgrade\Database\TableFilter;
 use PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeFileNames;
 use PrestaShop\Module\AutoUpgrade\Progress\Backlog;
@@ -36,14 +31,22 @@ use PrestaShop\Module\AutoUpgrade\Task\AbstractTask;
 use PrestaShop\Module\AutoUpgrade\Task\ExitCode;
 use PrestaShop\Module\AutoUpgrade\Task\TaskName;
 use PrestaShop\Module\AutoUpgrade\Task\TaskType;
-use PrestaShop\Module\AutoUpgrade\Tools14;
 use PrestaShop\Module\AutoUpgrade\UpgradeContainer;
+use Symfony\Component\HttpFoundation\Request;
 
 class BackupDatabase extends AbstractTask
 {
     const TASK_TYPE = TaskType::TASK_TYPE_BACKUP;
 
     const MAX_SIZE_PER_INSERT_STMT = 950000;
+
+    /**
+     * @throws Exception
+     */
+    public function init(): void
+    {
+        $this->container->initPrestaShopCore();
+    }
 
     /**
      * @throws Exception
@@ -55,18 +58,22 @@ class BackupDatabase extends AbstractTask
         $start_time = time();
         $time_elapsed = 0;
 
+        $state = $this->container->getBackupState();
+
         $db = $this->container->getDb();
         $dbLink = $db->connect();
 
-        if (!$this->container->getFileConfigurationStorage()->exists(UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST)) {
+        if (!$this->container->getFileStorage()->exists(UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST)) {
             return $this->warmUp();
         }
 
-        $tablesToBackup = Backlog::fromContents($this->container->getFileConfigurationStorage()->load(UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST));
+        $tablesToBackup = Backlog::fromContents($this->container->getFileStorage()->load(UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST));
 
         $numberOfSyncedTables = 0;
         $fp = false;
         $backupfile = null;
+
+        $httpHost = (Request::createFromGlobals())->getHttpHost();
 
         // MAIN BACKUP LOOP //
         $written = 0;
@@ -74,14 +81,14 @@ class BackupDatabase extends AbstractTask
             && $tablesToBackup->getRemainingTotal()
         ) {
             // Recover table partially synced
-            $table = $this->container->getState()->getBackupTable();
+            $table = $state->getBackupTable();
             if (null === $table) {
                 // Or get the next one to sync
                 $table = $tablesToBackup->getNext();
-                $this->container->getState()->setBackupLoopLimit(0);
+                $state->setBackupLoopLimit(0);
             }
 
-            if ($written > $this->container->getUpgradeConfiguration()->getMaxSizeToWritePerCall()) {
+            if ($written > $this->container->getUpdateConfiguration()->getMaxSizeToWritePerCall()) {
                 // In the previous loop execution, we reached the limit of data to store in a single file.
                 // We reset the stream
                 $written = 0;
@@ -92,15 +99,15 @@ class BackupDatabase extends AbstractTask
 
             if ($written === 0) {
                 // increment dbStep will increment the number in filename
-                $this->container->getState()->setDbStep($this->container->getState()->getDbStep() + 1);
+                $state->setDbStep($state->getDbStep() + 1);
 
-                $backupfile = $this->container->getProperty(UpgradeContainer::BACKUP_PATH) . DIRECTORY_SEPARATOR . $this->container->getState()->getBackupName() . DIRECTORY_SEPARATOR . $this->container->getState()->getBackupDbFilename();
-                $backupfile = preg_replace('#_XXXXXX_#', '_' . str_pad(strval($this->container->getState()->getDbStep()), 6, '0', STR_PAD_LEFT) . '_', $backupfile);
+                $backupfile = $this->container->getProperty(UpgradeContainer::BACKUP_PATH) . DIRECTORY_SEPARATOR . $state->getBackupName() . DIRECTORY_SEPARATOR . $state->getBackupDbFilename();
+                $backupfile = preg_replace('#_XXXXXX_#', '_' . str_pad(strval($state->getDbStep()), 6, '0', STR_PAD_LEFT) . '_', $backupfile);
 
                 // start init file
                 $fp = $this->openPartialBackupFile($backupfile);
 
-                $written += fwrite($fp, '/* Backup ' . $this->container->getState()->getDbStep() . ' for ' . Tools14::getHttpHost() . __PS_BASE_URI__ . "\n *  at " . date('r') . "\n */\n");
+                $written += fwrite($fp, '/* Backup ' . $state->getDbStep() . ' for ' . $httpHost . __PS_BASE_URI__ . "\n *  at " . date('r') . "\n */\n");
                 $written += fwrite($fp, "\n" . 'SET SESSION sql_mode = \'\';' . "\n\n");
                 $written += fwrite($fp, "\n" . 'SET NAMES \'utf8\';' . "\n\n");
                 $written += fwrite($fp, "\n" . 'SET FOREIGN_KEY_CHECKS=0;' . "\n\n");
@@ -108,7 +115,7 @@ class BackupDatabase extends AbstractTask
             }
 
             // start schema : drop & create table only
-            if (null === $this->container->getState()->getBackupTable()) {
+            if (null === $state->getBackupTable()) {
                 // Export the table schema
                 $schema = $db->executeS('SHOW CREATE TABLE `' . $table . '`', true, false);
 
@@ -116,8 +123,8 @@ class BackupDatabase extends AbstractTask
                     !(isset($schema[0]['Table'], $schema[0]['Create Table'])
                         || isset($schema[0]['View'], $schema[0]['Create View']))) {
                     fclose($fp);
-                    if (file_exists($backupfile)) {
-                        unlink($backupfile);
+                    if ($this->container->getFileSystem()->exists($backupfile)) {
+                        $this->container->getFileSystem()->remove($backupfile);
                     }
                     $this->logger->error($this->translator->trans('An error occurred while backing up. Unable to obtain the schema of %s', [$table]));
                     $this->logger->info($this->translator->trans('Error during database backup.'));
@@ -148,9 +155,7 @@ class BackupDatabase extends AbstractTask
                     // CREATE TABLE
                     $written += fwrite($fp, $schema[0]['Create Table'] . ";\n\n");
                     // schema created, now we need to create the missing vars
-                    $this->container->getState()->setBackupTable($table);
-                    $lines = explode("\n", $schema[0]['Create Table']);
-                    $this->container->getState()->setBackupLines($lines);
+                    $state->setBackupTable($table);
                 }
             }
             // end of schema
@@ -158,8 +163,8 @@ class BackupDatabase extends AbstractTask
             $i = 0;
 
             // POPULATE TABLE
-            if ($this->container->getState()->getBackupTable()) {
-                $backup_loop_limit = $this->container->getState()->getBackupLoopLimit();
+            if ($state->getBackupTable()) {
+                $backup_loop_limit = $state->getBackupLoopLimit();
 
                 $dbLink->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
                 /** @see https://dev.mysql.com/doc/refman/8.4/en/select.html specifies a large LIMIT value to get the whole table */
@@ -210,12 +215,12 @@ class BackupDatabase extends AbstractTask
 
             if (!empty($row)) {
                 // Still data to store, prepare state
-                $this->container->getState()->setBackupLoopLimit($this->container->getState()->getBackupLoopLimit() + $i);
+                $state->setBackupLoopLimit($state->getBackupLoopLimit() + $i);
             } else {
                 // Sync is complete for the table
                 ++$numberOfSyncedTables;
                 $this->logger->debug($this->translator->trans('%s table has been saved.', [$table]));
-                $this->container->getState()->setBackupTable(null);
+                $state->setBackupTable(null);
             }
 
             $time_elapsed = time() - $start_time;
@@ -228,10 +233,10 @@ class BackupDatabase extends AbstractTask
             $fp = null;
         }
 
-        $this->container->getState()->setProgressPercentage(
+        $state->setProgressPercentage(
             $this->container->getCompletionCalculator()->computePercentage($tablesToBackup, self::class, BackupComplete::class)
         );
-        $this->container->getFileConfigurationStorage()->save($tablesToBackup->dump(), UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST);
+        $this->container->getFileStorage()->save($tablesToBackup->dump(), UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST);
 
         if ($numberOfSyncedTables) {
             $this->logger->info($this->translator->trans('%s tables have been saved.', [$numberOfSyncedTables]));
@@ -246,16 +251,15 @@ class BackupDatabase extends AbstractTask
 
             return ExitCode::SUCCESS;
         }
-        $this->container->getState()
+        $state
             ->setBackupLoopLimit(null)
-            ->setBackupLines(null)
             ->setBackupTable(null);
 
         $this->stepDone = true;
         // reset dbStep at the end of this step
-        $this->container->getState()->setDbStep(0);
+        $state->setDbStep(0);
 
-        $this->logger->info($this->translator->trans('Database backup done in filename %s.', [$this->container->getState()->getBackupName()]));
+        $this->logger->info($this->translator->trans('Database backup done in filename %s.', [$state->getBackupName()]));
         $this->next = TaskName::TASK_BACKUP_COMPLETE;
 
         return ExitCode::SUCCESS;
@@ -263,7 +267,9 @@ class BackupDatabase extends AbstractTask
 
     protected function warmUp(): int
     {
-        $this->container->getState()->setProgressPercentage(
+        $state = $this->container->getBackupState();
+
+        $state->setProgressPercentage(
             $this->container->getCompletionCalculator()->getBasePercentageOfTask(self::class)
         );
 
@@ -277,10 +283,10 @@ class BackupDatabase extends AbstractTask
             return ExitCode::FAIL;
         }
 
-        if (!is_dir($this->container->getProperty(UpgradeContainer::BACKUP_PATH) . DIRECTORY_SEPARATOR . $this->container->getState()->getBackupName())) {
-            mkdir($this->container->getProperty(UpgradeContainer::BACKUP_PATH) . DIRECTORY_SEPARATOR . $this->container->getState()->getBackupName());
+        if (!is_dir($this->container->getProperty(UpgradeContainer::BACKUP_PATH) . DIRECTORY_SEPARATOR . $state->getBackupName())) {
+            $this->container->getFileSystem()->mkdir($this->container->getProperty(UpgradeContainer::BACKUP_PATH) . DIRECTORY_SEPARATOR . $state->getBackupName());
         }
-        $this->container->getState()->setDbStep(0);
+        $state->setDbStep(0);
         $listOfTables = $this->filterTablesToSync(
             $this->container->getDb()->executeS('SHOW TABLES LIKE "' . _DB_PREFIX_ . '%"', true, false)
         );
@@ -291,7 +297,7 @@ class BackupDatabase extends AbstractTask
 
         $tablesToBackup = new Backlog($listOfTables, count($listOfTables));
 
-        $this->container->getFileConfigurationStorage()->save($tablesToBackup->dump(), UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST);
+        $this->container->getFileStorage()->save($tablesToBackup->dump(), UpgradeFileNames::DB_TABLES_TO_BACKUP_LIST);
 
         return ExitCode::SUCCESS;
     }
@@ -312,26 +318,12 @@ class BackupDatabase extends AbstractTask
             }
 
             // Ignore stat tables
-            if (in_array($table, $this->getTablesToIgnore())) {
+            if (in_array($table, TableFilter::tablesToIgnore())) {
                 return false;
             }
 
             return true;
         });
-    }
-
-    /**
-     * @return string[]
-     */
-    private function getTablesToIgnore(): array
-    {
-        return [
-            _DB_PREFIX_ . 'connections',
-            _DB_PREFIX_ . 'connections_page',
-            _DB_PREFIX_ . 'connections_source',
-            _DB_PREFIX_ . 'guest',
-            _DB_PREFIX_ . 'statssearch',
-        ];
     }
 
     // MANAGEMENT OF BACKUP FILE RESOURCE
@@ -344,7 +336,7 @@ class BackupDatabase extends AbstractTask
     private function openPartialBackupFile(string $backupfile)
     {
         // Figure out what compression is available and open the file
-        if (file_exists($backupfile)) {
+        if ($this->container->getFileSystem()->exists($backupfile)) {
             throw (new UpgradeException($this->translator->trans('Backup file %s already exists. Operation aborted.', [$backupfile])))->setSeverity(UpgradeException::SEVERITY_ERROR);
         }
 

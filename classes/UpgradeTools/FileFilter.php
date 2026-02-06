@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\UpgradeTools;
@@ -37,7 +31,7 @@ class FileFilter
     /**
      * @var UpgradeConfiguration
      */
-    protected $configuration;
+    protected $updateConfiguration;
 
     /** @var ComposerService */
     protected $composerService;
@@ -64,12 +58,12 @@ class FileFilter
     ];
 
     public function __construct(
-        UpgradeConfiguration $configuration,
+        UpgradeConfiguration $updateConfiguration,
         ComposerService $composerService,
         string $rootDir,
         string $autoupgradeDir = 'autoupgrade'
     ) {
-        $this->configuration = $configuration;
+        $this->updateConfiguration = $updateConfiguration;
         $this->composerService = $composerService;
         $this->rootDir = $rootDir;
         $this->autoupgradeDir = $autoupgradeDir;
@@ -94,7 +88,7 @@ class FileFilter
             '/admin/autoupgrade',
         ];
 
-        if (!$this->configuration->shouldBackupImages()) {
+        if (!$this->updateConfiguration->shouldBackupImages()) {
             $backupIgnoreAbsoluteFiles[] = '/img';
         } else {
             $backupIgnoreAbsoluteFiles[] = '/img/tmp';
@@ -117,11 +111,10 @@ class FileFilter
             '..',
         ];
 
-        if (!$this->configuration->shouldBackupImages()) {
-            $restoreIgnoreAbsoluteFiles[] = '/img';
-        } else {
-            $restoreIgnoreAbsoluteFiles[] = '/img/tmp';
-        }
+        // TODO: Let the images being overwritten by the backup if they exist.
+        // For the images created after the backup, they will remain of the filesystem until
+        // we find a condition based on the presence of the images in the backup.
+        $restoreIgnoreAbsoluteFiles[] = '/img';
 
         return $restoreIgnoreAbsoluteFiles;
     }

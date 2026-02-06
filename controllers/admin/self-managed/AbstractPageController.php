@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,20 +14,16 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Controller;
 
 use PrestaShop\Module\AutoUpgrade\AjaxResponseBuilder;
+use PrestaShop\Module\AutoUpgrade\DocumentationLinks;
+use PrestaShop\Module\AutoUpgrade\Router\Routes;
 use PrestaShop\Module\AutoUpgrade\Twig\PageSelectors;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -52,6 +48,9 @@ abstract class AbstractPageController extends AbstractGlobalController
         return $psClass;
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function renderPage(string $page, array $params): string
     {
         $pageSelectors = new PageSelectors();
@@ -62,6 +61,13 @@ abstract class AbstractPageController extends AbstractGlobalController
                 [
                     'page' => $page,
                     'ps_version' => $this->getPsVersionClass(),
+                    'data_transparency_link' => DocumentationLinks::getPrestashopProjectDataTransparencyUrl(),
+
+                    // Data for generic error page
+                    'error_template_target' => PageSelectors::PAGE_PARENT_ID,
+                    'exit_to_shop_admin' => $this->upgradeContainer->getUrlGenerator()->getShopAdminAbsolutePathFromRequest($this->request),
+                    'exit_to_app_home' => Routes::HOME_PAGE,
+                    'submit_error_report_route' => Routes::DISPLAY_ERROR_REPORT_MODAL,
                 ],
                 $pageSelectors::getAllSelectors(),
                 $params
@@ -69,6 +75,9 @@ abstract class AbstractPageController extends AbstractGlobalController
         );
     }
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function renderPageContent(string $page, array $params): string
     {
         $pageSelectors = new PageSelectors();
@@ -76,6 +85,9 @@ abstract class AbstractPageController extends AbstractGlobalController
         return $this->getTwig()->render(
             '@ModuleAutoUpgrade/pages/' . $page . '.html.twig',
             array_merge(
+                [
+                    'data_transparency_link' => DocumentationLinks::getPrestashopProjectDataTransparencyUrl(),
+                ],
                 $pageSelectors::getAllSelectors(),
                 $params
             )
@@ -96,7 +108,7 @@ abstract class AbstractPageController extends AbstractGlobalController
                     $this->getPageTemplate(),
                     $this->getParams()
                 ),
-                $this->displayRouteInUrl()
+                ['newRoute' => $this->displayRouteInUrl()]
             );
         }
 
@@ -119,7 +131,7 @@ abstract class AbstractPageController extends AbstractGlobalController
      * Provide another route to display in the address bar when this controller
      * is called from an ajax request.
      *
-     * @return Routes::*|void
+     * @return Routes::*|null
      */
     protected function displayRouteInUrl(): ?string
     {
@@ -127,7 +139,7 @@ abstract class AbstractPageController extends AbstractGlobalController
     }
 
     /**
-     * @return array
+     * @return array<string, mixed>
      */
     abstract protected function getParams(): array;
 }

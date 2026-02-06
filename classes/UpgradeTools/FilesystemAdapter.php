@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,45 +14,37 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\UpgradeTools;
 
+use CallbackFilterIterator;
 use FilesystemIterator;
-use PrestaShop\Module\AutoUpgrade\Tools14;
+use IteratorIterator;
 use RecursiveCallbackFilterIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Filesystem\Filesystem;
 
 class FilesystemAdapter
 {
-    /**
-     * @var FileFilter
-     */
+    /** @var Filesystem */
+    private $filesystem;
+
+    /** @var FileFilter */
     private $fileFilter;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private $autoupgradeDir;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private $adminSubDir;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private $prodRootDir;
 
     /**
@@ -73,26 +65,17 @@ class FilesystemAdapter
     ];
 
     public function __construct(
+        Filesystem $filesystem,
         FileFilter $fileFilter,
         string $autoupgradeDir,
         string $adminSubDir,
         string $prodRootDir
     ) {
+        $this->filesystem = $filesystem;
         $this->fileFilter = $fileFilter;
-
         $this->autoupgradeDir = $autoupgradeDir;
         $this->adminSubDir = $adminSubDir;
         $this->prodRootDir = $prodRootDir;
-    }
-
-    /**
-     * Delete directory and subdirectories.
-     *
-     * @param string $dirname Directory name
-     */
-    public static function deleteDirectory(string $dirname, bool $delete_self = true): bool
-    {
-        return Tools14::deleteDirectory($dirname, $delete_self);
     }
 
     /**
@@ -105,7 +88,7 @@ class FilesystemAdapter
         $files = [];
         $directory = new RecursiveDirectoryIterator(
             $dir,
-            FilesystemIterator::SKIP_DOTS | FilesystemIterator::KEY_AS_FILENAME | FilesystemIterator::CURRENT_AS_PATHNAME | FilesystemIterator::UNIX_PATHS
+            FilesystemIterator::SKIP_DOTS | FilesystemIterator::KEY_AS_FILENAME | FilesystemIterator::CURRENT_AS_PATHNAME
         );
         $filter = new RecursiveCallbackFilterIterator($directory, function ($current, $key, $iterator) use ($way, $dir) {
             return !$this->isFileSkipped($key, $current, $way, $dir);
@@ -188,7 +171,7 @@ class FilesystemAdapter
      *
      * @return bool
      */
-    public function isFileSkipped(string $file, string $fullpath, string $way = 'backup', string $temporaryWorkspace = null): bool
+    public function isFileSkipped(string $file, string $fullpath, string $way = 'backup', ?string $temporaryWorkspace = null): bool
     {
         $fullpath = str_replace('\\', '/', $fullpath); // wamp compliant
         $rootpath = str_replace(
@@ -246,5 +229,46 @@ class FilesystemAdapter
         }
 
         return true;
+    }
+
+    /**
+     * Clears the contents of a given directory, excluding specified items,
+     * * optionally deleting the directory itself.
+     *
+     * @param string $folderToClear the absolute path of the directory to be cleared
+     * @param string[] $excluded list of file or directory names to exclude from deletion
+     *
+     * @return bool returns `true` if any files/folders were deleted, `false` otherwise
+     *
+     * @throws IOException if the removal of a file or directory fails
+     */
+    public function clearDirectory(string $folderToClear, array $excluded = []): bool
+    {
+        $hasDeletedItems = false;
+
+        if (!$this->filesystem->exists($folderToClear)) {
+            return $hasDeletedItems;
+        }
+
+        $excluded[] = 'index.php';
+
+        $directory = new FilesystemIterator(
+            $folderToClear, FilesystemIterator::SKIP_DOTS | FilesystemIterator::CURRENT_AS_FILEINFO
+        );
+
+        $filter = new CallbackFilterIterator($directory, function ($current) use ($excluded) {
+            return !in_array($current->getFilename(), $excluded, true);
+        });
+
+        $iterator = new IteratorIterator($filter);
+
+        foreach ($iterator as $file) {
+            $this->filesystem->remove($file);
+            $hasDeletedItems = true;
+        }
+
+        clearstatcache();
+
+        return $hasDeletedItems;
     }
 }

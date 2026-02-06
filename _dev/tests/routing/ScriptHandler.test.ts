@@ -1,9 +1,27 @@
-import ScriptHandler from '../../src/ts/routing/ScriptHandler';
-import HomePage from '../../src/ts/pages/HomePage';
-import UpdatePageVersionChoice from '../../src/ts/pages/UpdatePageVersionChoice';
-import { routeHandler } from '../../src/ts/autoUpgrade';
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+import ScriptHandler from '../../src/ts/appUI/routing/ScriptHandler';
+import HomePage from '../../src/ts/appUI/pages/HomePage';
+import UpdatePageVersionChoice from '../../src/ts/appUI/pages/UpdatePageVersionChoice';
+import { routeHandler } from '../../src/ts/appUI/main';
 
-jest.mock('../../src/ts/autoUpgrade', () => ({
+jest.mock('../../src/ts/appUI/main', () => ({
   routeHandler: {
     getCurrentRoute: jest.fn()
   }
@@ -11,7 +29,7 @@ jest.mock('../../src/ts/autoUpgrade', () => ({
 
 const homeMount = jest.fn();
 const homeDestroy = jest.fn();
-jest.mock('../../src/ts/pages/HomePage', () => {
+jest.mock('../../src/ts/appUI/pages/HomePage', () => {
   return jest.fn().mockImplementation(() => ({
     mount: homeMount,
     beforeDestroy: homeDestroy
@@ -20,7 +38,7 @@ jest.mock('../../src/ts/pages/HomePage', () => {
 
 const updateMount = jest.fn();
 const updateDestroy = jest.fn();
-jest.mock('../../src/ts/pages/UpdatePageVersionChoice', () => {
+jest.mock('../../src/ts/appUI/pages/UpdatePageVersionChoice', () => {
   return jest.fn().mockImplementation(() => ({
     mount: updateMount,
     beforeDestroy: updateDestroy
@@ -58,7 +76,7 @@ describe('ScriptHandler', () => {
 
     expect(homeMount).toHaveBeenCalledTimes(1);
 
-    scriptHandler.updateRouteScript('update-page-version-choice');
+    scriptHandler.loadScript('update-page-version-choice');
 
     expect(homeDestroy).toHaveBeenCalledTimes(1);
     expect(UpdatePageVersionChoice).toHaveBeenCalledTimes(1);
@@ -73,7 +91,7 @@ describe('ScriptHandler', () => {
     scriptHandler = new ScriptHandler();
 
     expect(consoleDebugSpy).toHaveBeenCalledWith(
-      `No matching page Class found for route: ${route}`
+      `No matching script in script types found for script with ID: ${route}`
     );
   });
 
@@ -89,10 +107,10 @@ describe('ScriptHandler', () => {
     (routeHandler.getCurrentRoute as jest.Mock).mockReturnValue('home-route');
 
     scriptHandler = new ScriptHandler();
-    scriptHandler.updateRouteScript(route);
+    scriptHandler.loadScript(route);
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      `Failed to load script for route ${route}:`,
+      `Failed to load script with ID ${route}:`,
       expect.any(Error)
     );
   });

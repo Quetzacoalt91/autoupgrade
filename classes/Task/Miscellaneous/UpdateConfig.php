@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,23 +14,15 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Task\Miscellaneous;
 
 use Exception;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
-use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfigurationStorage;
-use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeFileNames;
 use PrestaShop\Module\AutoUpgrade\Task\AbstractTask;
 use PrestaShop\Module\AutoUpgrade\Task\ExitCode;
 use PrestaShop\Module\AutoUpgrade\Task\TaskName;
@@ -60,6 +52,13 @@ class UpdateConfig extends AbstractTask
         $configurationData = $this->getConfigurationData();
         $config = [];
 
+        $upgradeKeysAssoc = array_fill_keys(UpgradeConfiguration::UPGRADE_CONST_KEYS, true);
+        $diff = array_diff_key($configurationData, $upgradeKeysAssoc);
+
+        foreach ($diff as $key => $configDiff) {
+            $this->logger->warning($this->translator->trans("Unknown configuration key '%s', Ignoring.", [$key]));
+        }
+
         foreach (UpgradeConfiguration::UPGRADE_CONST_KEYS as $key) {
             if (!isset($configurationData[$key])) {
                 continue;
@@ -72,12 +71,18 @@ class UpdateConfig extends AbstractTask
             }
         }
 
+        // If no channel is specified, and there is a configuration relating to archive files, we deduce that the channel is local
+        $archiveFilesConfExist = isset($config[UpgradeConfiguration::ARCHIVE_XML]) || isset($config[UpgradeConfiguration::ARCHIVE_ZIP]);
+        if (!isset($config[UpgradeConfiguration::CHANNEL]) && $archiveFilesConfExist) {
+            $config[UpgradeConfiguration::CHANNEL] = UpgradeConfiguration::CHANNEL_LOCAL;
+        }
+
         $isLocal = $config[UpgradeConfiguration::CHANNEL] === UpgradeConfiguration::CHANNEL_LOCAL;
 
         $error = $this->container->getConfigurationValidator()->validate($config);
 
         if ($isLocal && empty($error)) {
-            $this->container->getLocalChannelConfigurationValidator()->validate($config);
+            $error = $this->container->getLocalChannelConfigurationValidator()->validate($config);
         }
 
         if (!empty($error)) {
@@ -91,8 +96,8 @@ class UpdateConfig extends AbstractTask
             $file = $config[UpgradeConfiguration::ARCHIVE_ZIP];
             $fullFilePath = $this->container->getProperty(UpgradeContainer::DOWNLOAD_PATH) . DIRECTORY_SEPARATOR . $file;
             try {
-                $config['archive_version_num'] = $this->container->getPrestashopVersionService()->extractPrestashopVersionFromZip($fullFilePath);
-                $this->logger->info($this->translator->trans('Upgrade process will use archive.'));
+                $config[UpgradeConfiguration::ARCHIVE_VERSION_NUM] = $this->container->getPrestashopVersionService()->extractPrestashopVersionFromZip($fullFilePath);
+                $this->logger->info($this->translator->trans('Update process will use archive.'));
             } catch (Exception $exception) {
                 $this->setErrorFlag();
                 $this->logger->error($this->translator->trans('We couldn\'t find a PrestaShop version in the .zip file that was uploaded in your local archive. Please try again.'));
@@ -162,14 +167,15 @@ class UpdateConfig extends AbstractTask
      */
     private function writeConfig(array $config): bool
     {
-        $classConfig = $this->container->getUpgradeConfiguration();
+        $configurationStorage = $this->container->getConfigurationStorage();
+        $classConfig = $this->container->getUpdateConfiguration();
         $classConfig->merge($config);
 
-        $this->logger->info($this->translator->trans('Configuration successfully updated.') . ' <strong>' . $this->translator->trans('This page will now be reloaded and the module will check if a new version is available.') . '</strong>');
+        $this->logger->info($this->translator->trans('Configuration successfully updated.'));
 
         $this->container->getLogger()->debug('Configuration update: ' . json_encode($classConfig->toArray(), JSON_PRETTY_PRINT));
 
-        return (new UpgradeConfigurationStorage($this->container->getProperty(UpgradeContainer::WORKSPACE_PATH) . DIRECTORY_SEPARATOR))->save($classConfig, UpgradeFileNames::CONFIG_FILENAME);
+        return $configurationStorage->save($classConfig);
     }
 
     public function init(): void

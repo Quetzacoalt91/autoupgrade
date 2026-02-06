@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Task;
@@ -30,7 +24,9 @@ namespace PrestaShop\Module\AutoUpgrade\Task;
 use Exception;
 use PrestaShop\Module\AutoUpgrade\AjaxResponse;
 use PrestaShop\Module\AutoUpgrade\Analytics;
+use PrestaShop\Module\AutoUpgrade\Exceptions\UpgradeException;
 use PrestaShop\Module\AutoUpgrade\Log\Logger;
+use PrestaShop\Module\AutoUpgrade\Task\Runner\ChainedTasks;
 use PrestaShop\Module\AutoUpgrade\UpgradeContainer;
 use PrestaShop\Module\AutoUpgrade\UpgradeTools\Translator;
 
@@ -98,19 +94,11 @@ abstract class AbstractTask
         $this->checkTaskMayRun();
 
         if ($this::TASK_TYPE !== null) {
-            $logPath = $this->container->getLogsPath($this::TASK_TYPE);
+            $logPath = $this->container->getLogsService()->getLogsPath($this::TASK_TYPE);
             if ($logPath !== null) {
                 $this->logger->updateLogsPath($logPath);
             }
         }
-    }
-
-    /**
-     * @return string base64 encoded data from AjaxResponse
-     */
-    public function getEncodedResponse(): string
-    {
-        return base64_encode($this->getJsonResponse());
     }
 
     /**
@@ -128,27 +116,16 @@ abstract class AbstractTask
      */
     public function getResponse(): AjaxResponse
     {
-        $response = new AjaxResponse($this->container->getState(), $this->logger);
+        $response = new AjaxResponse(
+            $this->container->getStateFromTaskType($this->getTaskType()),
+            $this->logger
+        );
 
         return $response->setError($this->error)
             ->setStepDone($this->stepDone)
             ->setNext($this->next)
             ->setNextParams($this->nextParams)
-            ->setUpgradeConfiguration($this->container->getUpgradeConfiguration());
-    }
-
-    private function checkTaskMayRun(): void
-    {
-        // PrestaShop demo mode
-        if (defined('_PS_MODE_DEMO_') && _PS_MODE_DEMO_ == true) {
-            return;
-        }
-
-        $currentAction = get_class($this);
-        if (isset(self::$skipAction[$currentAction])) {
-            $this->next = self::$skipAction[$currentAction];
-            $this->logger->info($this->translator->trans('Action %s skipped', [$currentAction]));
-        }
+            ->setUpgradeConfiguration($this->container->getUpdateConfiguration());
     }
 
     public function setErrorFlag(): void
@@ -178,30 +155,52 @@ abstract class AbstractTask
         }
     }
 
-    /**
-     * @throws Exception
-     */
     public function init(): void
     {
-        $this->container->initPrestaShopCore();
-        $this->setupEnvironment();
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function setupEnvironment(): void
-    {
-        if ($this::TASK_TYPE === TaskType::TASK_TYPE_UPDATE && $this->container->getUpgradeConfiguration()->isChannelLocal()) {
-            $archiveXml = $this->container->getUpgradeConfiguration()->getLocalChannelXml();
-            $this->container->getFileLoader()->addXmlMd5File($this->container->getUpgrader()->getDestinationVersion(), $this->container->getProperty(UpgradeContainer::DOWNLOAD_PATH) . DIRECTORY_SEPARATOR . $archiveXml);
-        }
-
-        if ($this::TASK_TYPE !== TaskType::TASK_TYPE_RESTORE && !$this->container->getState()->isInitialized()) {
-            $this->container->getState()->initDefault($this->container->getProperty(UpgradeContainer::PS_VERSION), $this->container->getUpgrader()->getDestinationVersion());
-            $this->logger->debug($this->translator->trans('Successfully initialized state.'));
-        }
     }
 
     abstract public function run(): int;
+
+    protected function handleException(UpgradeException $e): void
+    {
+        if ($e->getSeverity() === UpgradeException::SEVERITY_ERROR) {
+            $this->next = TaskName::TASK_ERROR;
+            $this->setErrorFlag();
+            $this->logger->error($e->getMessage());
+        }
+        if ($e->getSeverity() === UpgradeException::SEVERITY_WARNING) {
+            $this->logger->warning($e->getMessage());
+            $this->container->getUpdateState()->setWarningDetected(true);
+        }
+
+        foreach ($e->getQuickInfos() as $log) {
+            $this->logger->warning($log);
+        }
+    }
+
+    /**
+     * @return TaskType::TASK_TYPE_* $task
+     */
+    private function getTaskType(): string
+    {
+        if ($this instanceof ChainedTasks) {
+            return $this->stepClass::TASK_TYPE;
+        }
+
+        return $this::TASK_TYPE;
+    }
+
+    private function checkTaskMayRun(): void
+    {
+        // PrestaShop demo mode
+        if (defined('_PS_MODE_DEMO_') && _PS_MODE_DEMO_ == true) {
+            return;
+        }
+
+        $currentAction = get_class($this);
+        if (isset(self::$skipAction[$currentAction])) {
+            $this->next = self::$skipAction[$currentAction];
+            $this->logger->info($this->translator->trans('Action %s skipped', [$currentAction]));
+        }
+    }
 }

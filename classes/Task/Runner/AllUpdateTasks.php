@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,24 +14,16 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Task\Runner;
 
 use Exception;
 use PrestaShop\Module\AutoUpgrade\AjaxResponse;
-use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
 use PrestaShop\Module\AutoUpgrade\Task\TaskName;
-use UnexpectedValueException;
 
 /**
  * Execute the whole upgrade process in a single request.
@@ -53,30 +45,11 @@ class AllUpdateTasks extends ChainedTasks
      * > data: Loads an encoded array of data coming from another request.
      *
      * @param array<string, string> $options
-     *
-     * @throws Exception
      */
     public function setOptions(array $options): void
     {
         if (!empty($options['action'])) {
             $this->step = $options['action'];
-        }
-
-        if (!empty($options[UpgradeConfiguration::CHANNEL])) {
-            $config = [
-                UpgradeConfiguration::CHANNEL => $options[UpgradeConfiguration::CHANNEL],
-            ];
-            $error = $this->container->getConfigurationValidator()->validate($config);
-
-            if (!empty($error)) {
-                throw new UnexpectedValueException(reset($error)['message']);
-            }
-
-            $this->container->getUpgradeConfiguration()->merge($config);
-        }
-
-        if (!empty($options['data'])) {
-            $this->container->getState()->importFromEncodedData($options['data']);
         }
     }
 
@@ -98,18 +71,14 @@ class AllUpdateTasks extends ChainedTasks
             return false;
         }
 
-        $this->logger->info('Restart requested. Please run the following command to continue your upgrade:');
+        $this->logger->info('Restart requested. Please run the following command to continue your update:');
         $args = $_SERVER['argv'];
         foreach ($args as $key => $arg) {
-            if (
-                strpos($arg, '--data') === 0
-                || strpos($arg, '--action') === 0
-                || strpos($arg, '--config-file-path') === 0
-            ) {
+            if (strpos($arg, '--action') === 0 || strpos($arg, '--config-file-path') === 0) {
                 unset($args[$key]);
             }
         }
-        $this->logger->info('$ ' . implode(' ', $args) . ' --action=' . $response->getNext() . ' --data=' . $this->getEncodedResponse());
+        $this->logger->info('$ ' . implode(' ', $args) . ' --action=' . $response->getNext());
 
         return true;
     }

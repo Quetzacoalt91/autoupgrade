@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Parameters;
@@ -32,28 +26,27 @@ namespace PrestaShop\Module\AutoUpgrade\Parameters;
  */
 class UpgradeFileNames
 {
-    /**
-     * stateFilename contains all state specific to the autoupgrade module.
-     *
-     * @var string
-     */
-    const STATE_FILENAME = 'state.var';
+    // The different state files contains the temporary data used during
+    // the execution or as a result of a process
+    /** @var string */
+    const STATE_BACKUP_FILENAME = 'state_backup.var';
+    /** @var string */
+    const STATE_LOGS_FILENAME = 'state_logs.var';
+    /** @var string */
+    const STATE_RESTORE_FILENAME = 'state_restore.var';
+    /** @var string */
+    const STATE_UPDATE_FILENAME = 'state_update.var';
 
     /**
      * configFilename contains all configuration specific to the autoupgrade module.
      *
      * @var string
      */
-    const CONFIG_FILENAME = 'config.var';
+    const UPDATE_CONFIG_FILENAME = 'update_config.var';
 
-    /**
-     * during upgradeFiles process,
-     * this files contains the list of queries left to upgrade in a serialized array.
-     * (this file is deleted in init() method if you reload the page).
-     *
-     * @var string
-     */
-    const QUERIES_TO_UPGRADE_LIST = 'queriesToUpgrade.list';
+    const RESTORE_CONFIG_FILENAME = 'restore_config.var';
+
+    const LANGUAGE_CONFIG_FILENAME = 'language_config.var';
 
     /**
      * during upgradeFiles process,
@@ -72,6 +65,15 @@ class UpgradeFileNames
      * @var string
      */
     const SQL_TO_EXECUTE_LIST = 'sqlToExecute.list';
+
+    /**
+     * during downloadModules process,
+     * this files contains the list of modules left to download in a serialized array.
+     * (this file is deleted in init() method if you reload the page).
+     *
+     * @var string
+     */
+    const MODULES_TO_DOWNLOAD_LIST = 'modulesToDownload.list';
 
     /**
      * during upgradeModules process,
@@ -102,13 +104,19 @@ class UpgradeFileNames
 
     /**
      * during restoreDb process,
+     * this file contains a serialized array of db files which left to extract queries for restoring database
+     * (this file is deleted in init() method if you reload the page).
+     */
+    const DB_FILES_TO_RESTORE_LIST = 'dbFilesToRestore.list';
+
+    /**
+     * during restoreDb process,
      * this file contains a serialized array of queries which left to execute for restoring database
      * (this file is deleted in init() method if you reload the page).
      *
      * @var string
      */
     const QUERIES_TO_RESTORE_LIST = 'queryToRestore.list';
-    const DB_TABLES_TO_CLEAN_LIST = 'tableToClean.list';
 
     /**
      * during restoreFiles process,
@@ -126,22 +134,6 @@ class UpgradeFileNames
      * @var string
      */
     const FILES_FROM_ARCHIVE_LIST = 'filesFromArchive.list';
-
-    /**
-     * mailCustomList contains list of mails files which are customized,
-     * relative to original files for the current PrestaShop version.
-     *
-     * @var string
-     */
-    const MAILS_CUSTOM_LIST = 'mails-custom.list';
-
-    /**
-     * tradCustomList contains list of translation files which are customized,
-     * relative to original files for the current PrestaShop version.
-     *
-     * @var string
-     */
-    const TRANSLATION_FILES_CUSTOM_LIST = 'translations-custom.list';
 
     /**
      * Module Sources Providers are classes that fetching & compute data
@@ -162,13 +154,10 @@ class UpgradeFileNames
      * @var array<string, string>
      */
     public static $update_tmp_files = [
-        'STATE_FILENAME' => self::STATE_FILENAME,
-        'QUERIES_TO_UPGRADE_LIST' => self::QUERIES_TO_UPGRADE_LIST, // used ?
+        'STATE_FILENAME' => self::STATE_UPDATE_FILENAME,
         'FILES_TO_UPGRADE_LIST' => self::FILES_TO_UPGRADE_LIST,
-        'DB_TABLES_TO_CLEAN_LIST' => self::DB_TABLES_TO_CLEAN_LIST,
         'FILES_TO_REMOVE_LIST' => self::FILES_TO_REMOVE_LIST,
-        'MAILS_CUSTOM_LIST' => self::MAILS_CUSTOM_LIST,
-        'TRANSLATION_FILES_CUSTOM_LIST' => self::TRANSLATION_FILES_CUSTOM_LIST,
+        'MODULES_TO_DOWNLOAD_LIST' => self::MODULES_TO_DOWNLOAD_LIST,
         'MODULES_TO_UPGRADE_LIST' => self::MODULES_TO_UPGRADE_LIST,
         'MODULE_SOURCE_PROVIDER_CACHE_LOCAL' => self::MODULE_SOURCE_PROVIDER_CACHE_LOCAL,
         'MODULE_SOURCE_PROVIDER_CACHE_COMPOSER' => self::MODULE_SOURCE_PROVIDER_CACHE_COMPOSER,
@@ -181,7 +170,7 @@ class UpgradeFileNames
      * @var array<string, string>
      */
     public static $backup_tmp_files = [
-        'STATE_FILENAME' => self::STATE_FILENAME,
+        'STATE_FILENAME' => self::STATE_BACKUP_FILENAME,
         'FILES_TO_BACKUP_LIST' => self::FILES_TO_BACKUP_LIST,
         'DB_TABLES_TO_BACKUP_LIST' => self::DB_TABLES_TO_BACKUP_LIST,
     ];
@@ -190,8 +179,9 @@ class UpgradeFileNames
      * @var array<string, string>
      */
     public static $restore_tmp_files = [
-        'STATE_FILENAME' => self::STATE_FILENAME,
+        'STATE_FILENAME' => self::STATE_RESTORE_FILENAME,
         'QUERIES_TO_RESTORE_LIST' => self::QUERIES_TO_RESTORE_LIST,
+        'DB_FILES_TO_RESTORE_LIST' => self::DB_FILES_TO_RESTORE_LIST,
         'FILES_FROM_ARCHIVE_LIST' => self::FILES_FROM_ARCHIVE_LIST,
     ];
 }

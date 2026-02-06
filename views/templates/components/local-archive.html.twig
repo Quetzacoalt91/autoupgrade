@@ -1,8 +1,26 @@
+{#**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ *#}
 {% if (archiveFiles is defined and archiveFiles is not empty) and (xmlFiles is defined and xmlFiles is not empty) %}
   <div class="local-archive">
     <div class="form-group">
       <label for="{{ form_fields.archive_zip }}">
-        {{ 'Archive to use:'|trans({}) }}
+        {{ 'Archive to use'|trans({}) }}
         <span class="require-star">*</span>
       </label>
 
@@ -10,11 +28,9 @@
         class="form-control {% if errors[form_fields.archive_zip] %} error {% endif %}"
         id="{{ form_fields.archive_zip }}"
         name="{{ form_fields.archive_zip }}"
-        required
       >
-        <option value="">{{ 'Choose an archive'|trans({}) }}</option>
-        {% for file in archiveFiles %}
-          {% set fileName = file|replace({(downloadPath): ''}) %}
+        <option value="">{{ 'Select an archive'|trans({}) }}</option>
+        {% for fileName in archiveFiles %}
           <option
             {% if current_values is defined and current_values.archive_zip == fileName %}
               selected
@@ -36,7 +52,7 @@
 
     <div class="form-group">
       <label for="{{ form_fields.archive_xml }}">
-        {{ 'XML file to use:'|trans({}) }}
+        {{ 'XML file to use'|trans({}) }}
         <span class="require-star">*</span>
       </label>
 
@@ -44,11 +60,9 @@
         class="form-control {% if errors[form_fields.archive_xml] %} error {% endif %}"
         id="{{ form_fields.archive_xml }}"
         name="{{ form_fields.archive_xml }}"
-        required
       >
-        <option value="">{{ 'Choose an XML file'|trans({}) }}</option>
-        {% for file in xmlFiles %}
-          {% set fileName = file|replace({(downloadPath): ''}) %}
+        <option value="">{{ 'Select a file'|trans({}) }}</option>
+        {% for fileName in xmlFiles %}
           <option
             {% if current_values is defined and current_values.archive_xml == fileName %}
               selected
@@ -70,18 +84,18 @@
       {% if errors['global'] %}
         <div class="local-archive__alert">
           {% include "@ModuleAutoUpgrade/components/alert.html.twig" with {
-            title: "",
+            title: '',
             message: errors['global'],
-            alertStatus: "warning",
-            buttonLabel: "",
-            buttonUrl: "",
+            alertStatus: 'warning',
           } %}
         </div>
       {% endif %}
     </div>
   </div>
 {% else %}
-  <div class="alert alert-warning">
-    {{ 'No archive found in your admin/autoupgrade/download directory'|trans({}) }}
-  </div>
+  {% include "@ModuleAutoUpgrade/components/alert.html.twig" with {
+    title: '',
+    message: 'No archive found in the following directory: /your-admin-directory/autoupgrade/download/'|trans({}),
+    alertStatus: 'warning',
+  } %}
 {% endif %}

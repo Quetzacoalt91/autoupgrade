@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,25 +14,20 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade;
 
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeConfiguration;
+use PrestaShop\Module\AutoUpgrade\State\RestoreState;
+use PrestaShop\Module\AutoUpgrade\State\UpdateState;
 
 class Analytics
 {
     const SEGMENT_CLIENT_KEY_PHP = 'NrWZk42rDrA56DkEt9Tj18DBirLoRLhj';
-    const SEGMENT_CLIENT_KEY_JS = 'RM87m03McDSL4Fvm3GJ3piBPbAL3Fa2i';
 
     const WITH_COMMON_PROPERTIES = 0;
     const WITH_UPDATE_PROPERTIES = 1;
@@ -55,29 +50,37 @@ class Analytics
     /**
      * @var UpgradeConfiguration
      */
-    private $upgradeConfiguration;
+    private $updateConfiguration;
 
     /**
-     * @var State
+     * @var array{'restore': RestoreState, 'update': UpdateState}
      */
-    private $state;
+    private $states;
+
+    /**
+     * @var Environment
+     */
+    private $environment;
 
     /**
      * @param array{'properties'?: array<int, array<string, mixed>>} $options
+     * @param array{'restore': RestoreState, 'update': UpdateState} $states
      */
     public function __construct(
-        UpgradeConfiguration $upgradeConfiguration,
-        State $state,
+        UpgradeConfiguration $updateConfiguration,
+        Environment $environment,
+        array $states,
         string $anonymousUserId,
         array $options
     ) {
-        $this->upgradeConfiguration = $upgradeConfiguration;
-        $this->state = $state;
+        $this->updateConfiguration = $updateConfiguration;
+        $this->states = $states;
 
-        $this->anonymousId = hash('sha256', $anonymousUserId);
+        $this->anonymousId = $anonymousUserId;
         $this->properties = $options['properties'] ?? [];
+        $this->environment = $environment;
 
-        if ($this->hasOptedOut()) {
+        if (!$this->environment->getBoolean(Environment::URL_TRACKING_ENV_NAME, true)) {
             return;
         }
 
@@ -90,7 +93,7 @@ class Analytics
      */
     public function track(string $event, $propertiesType = self::WITH_COMMON_PROPERTIES): void
     {
-        if ($this->hasOptedOut()) {
+        if (!$this->environment->getBoolean(Environment::URL_TRACKING_ENV_NAME, true)) {
             return;
         }
 
@@ -111,20 +114,19 @@ class Analytics
         switch ($type) {
             case self::WITH_BACKUP_PROPERTIES:
                 $additionalProperties = [
-                    'backup_files_and_databases' => $this->upgradeConfiguration->shouldBackupFilesAndDatabase(),
-                    'backup_images' => $this->upgradeConfiguration->shouldBackupImages(),
+                    'backup_images' => $this->updateConfiguration->shouldBackupImages(),
                 ];
                 $upgradeProperties = $this->properties[self::WITH_BACKUP_PROPERTIES] ?? [];
                 $additionalProperties = array_merge($upgradeProperties, $additionalProperties);
                 break;
             case self::WITH_UPDATE_PROPERTIES:
                 $additionalProperties = [
-                    'from_ps_version' => $this->state->getCurrentVersion(),
-                    'to_ps_version' => $this->state->getDestinationVersion(),
-                    'upgrade_channel' => $this->upgradeConfiguration->getChannel(),
-                    'disable_non_native_modules' => $this->upgradeConfiguration->shouldDeactivateCustomModules(),
-                    'switch_to_default_theme' => $this->upgradeConfiguration->shouldSwitchToDefaultTheme(),
-                    'regenerate_customized_email_templates' => $this->upgradeConfiguration->shouldRegenerateMailTemplates(),
+                    'from_ps_version' => $this->states['update']->getCurrentVersion(),
+                    'to_ps_version' => $this->states['update']->getDestinationVersion(),
+                    'upgrade_channel' => $this->updateConfiguration->getChannel(),
+                    'update_type' => $this->updateConfiguration->getUpdateType(),
+                    'disable_non_native_modules' => $this->updateConfiguration->shouldDeactivateCustomModules(),
+                    'regenerate_customized_email_templates' => $this->updateConfiguration->shouldRegenerateMailTemplates(),
                 ];
                 $upgradeProperties = $this->properties[self::WITH_UPDATE_PROPERTIES] ?? [];
                 $additionalProperties = array_merge($upgradeProperties, $additionalProperties);
@@ -132,7 +134,7 @@ class Analytics
             case self::WITH_RESTORE_PROPERTIES:
                 $additionalProperties = [
                     'from_ps_version' => $this->properties[self::WITH_COMMON_PROPERTIES]['ps_version'] ?? null,
-                    'to_ps_version' => $this->state->getRestoreVersion(),
+                    'to_ps_version' => $this->states['restore']->getRestoreVersion(),
                 ];
                 $rollbackProperties = $this->properties[self::WITH_RESTORE_PROPERTIES] ?? [];
                 $additionalProperties = array_merge($rollbackProperties, $additionalProperties);
@@ -144,7 +146,7 @@ class Analytics
         $commonProperties = $this->properties[self::WITH_COMMON_PROPERTIES] ?? [];
 
         return [
-            'anonymousId' => $this->anonymousId,
+            'userId' => $this->anonymousId,
             'channel' => 'browser',
             'properties' => array_merge(
                 $commonProperties,
@@ -154,11 +156,5 @@ class Analytics
                 ]
             ),
         ];
-    }
-
-    private function hasOptedOut(): bool
-    {
-        return isset($_SERVER[self::URL_TRACKING_ENV_NAME])
-            && ((bool) $_SERVER[self::URL_TRACKING_ENV_NAME] === false || $_SERVER[self::URL_TRACKING_ENV_NAME] === 'false');
     }
 }

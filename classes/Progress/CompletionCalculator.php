@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Progress;
@@ -32,12 +26,13 @@ use PrestaShop\Module\AutoUpgrade\Task\Backup\BackupComplete;
 use PrestaShop\Module\AutoUpgrade\Task\Backup\BackupDatabase;
 use PrestaShop\Module\AutoUpgrade\Task\Backup\BackupFiles;
 use PrestaShop\Module\AutoUpgrade\Task\Backup\BackupInitialization;
-use PrestaShop\Module\AutoUpgrade\Task\Restore\Restore;
 use PrestaShop\Module\AutoUpgrade\Task\Restore\RestoreComplete;
 use PrestaShop\Module\AutoUpgrade\Task\Restore\RestoreDatabase;
 use PrestaShop\Module\AutoUpgrade\Task\Restore\RestoreFiles;
+use PrestaShop\Module\AutoUpgrade\Task\Restore\RestoreInitialization;
 use PrestaShop\Module\AutoUpgrade\Task\Update\CleanDatabase;
 use PrestaShop\Module\AutoUpgrade\Task\Update\Download;
+use PrestaShop\Module\AutoUpgrade\Task\Update\DownloadModules;
 use PrestaShop\Module\AutoUpgrade\Task\Update\Unzip;
 use PrestaShop\Module\AutoUpgrade\Task\Update\UpdateComplete;
 use PrestaShop\Module\AutoUpgrade\Task\Update\UpdateDatabase;
@@ -64,7 +59,8 @@ class CompletionCalculator
             // Update
             UpdateInitialization::class => 0,
             Download::class => 10,
-            Unzip::class => 20,
+            Unzip::class => 15,
+            DownloadModules::class => 25,
             UpdateFiles::class => 40,
             UpdateDatabase::class => 60,
             UpdateModules::class => 80,
@@ -72,7 +68,7 @@ class CompletionCalculator
             UpdateComplete::class => 100,
 
             // Restore
-            Restore::class => 0,
+            RestoreInitialization::class => 0,
             RestoreFiles::class => 33,
             RestoreDatabase::class => 66,
             RestoreComplete::class => 100,

@@ -6,7 +6,7 @@
  *
  * NOTICE OF LICENSE
  *
- * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * This source file is subject to the Academic Free License version 3.0
  * that is bundled with this package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/AFL-3.0
@@ -14,15 +14,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@prestashop.com so we can send you a copy immediately.
  *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
  * @author    PrestaShop SA and Contributors <contact@prestashop.com>
  * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
  */
 
 namespace PrestaShop\Module\AutoUpgrade\Models;
@@ -31,6 +25,10 @@ class PrestashopRelease
 {
     /** @var string */
     private $version;
+    /** @var 'rc'|'beta'|'stable' */
+    private $stability;
+    /** @var 'open_source'|'classic' */
+    private $distribution;
     /** @var ?string */
     private $phpMaxVersion;
     /** @var ?string */
@@ -43,32 +41,46 @@ class PrestashopRelease
     private $zipMd5;
     /** @var ?string */
     private $releaseNoteUrl;
-    /** @var 'rc'|'beta'|'stable' */
-    private $stability;
+    /** @var ?string */
+    private $distributionVersion;
 
     public function __construct(
         string $version,
         string $stability,
+        ?string $distribution = null,
         ?string $phpMaxVersion = null,
         ?string $phpMinVersion = null,
         ?string $zipDownloadUrl = null,
         ?string $xmlDownloadUrl = null,
         ?string $zipMd5 = null,
-        ?string $releaseNoteUrl = null
+        ?string $releaseNoteUrl = null,
+        ?string $distributionVersion = null
     ) {
         $this->version = $version;
+        $this->stability = $stability;
+        $this->distribution = $distribution;
         $this->phpMaxVersion = $phpMaxVersion;
         $this->phpMinVersion = $phpMinVersion;
         $this->zipDownloadUrl = $zipDownloadUrl;
         $this->xmlDownloadUrl = $xmlDownloadUrl;
         $this->zipMd5 = $zipMd5;
         $this->releaseNoteUrl = $releaseNoteUrl;
-        $this->stability = $stability;
+        $this->distributionVersion = $distributionVersion;
     }
 
     public function getVersion(): string
     {
         return $this->version;
+    }
+
+    public function getStability(): string
+    {
+        return $this->stability;
+    }
+
+    public function getDistribution(): string
+    {
+        return $this->distribution;
     }
 
     public function getPhpMaxVersion(): ?string
@@ -96,18 +108,13 @@ class PrestashopRelease
         return $this->zipMd5;
     }
 
-    public function getStability(): string
-    {
-        return $this->stability;
-    }
-
     public function getReleaseNoteUrl(): ?string
     {
         return $this->releaseNoteUrl;
     }
 
-    public function setReleaseNoteUrl(?string $releaseNoteUrl): void
+    public function getDistributionVersion(): ?string
     {
-        $this->releaseNoteUrl = $releaseNoteUrl;
+        return $this->distributionVersion;
     }
 }

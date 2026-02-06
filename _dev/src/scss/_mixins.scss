@@ -1,4 +1,22 @@
-/* Animations */
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+// Animations
 @keyframes rotate {
   from {
     transform: rotate(0deg);
@@ -61,5 +79,66 @@
   100% {
     left: 150%;
     width: 0%;
+  }
+}
+
+@keyframes backdrop-show {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes backdrop-hide {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-show {
+  from {
+    opacity: 0.5;
+    transform: translateY(-2rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialog-hide {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(2rem);
+  }
+}
+
+// Skeleton
+%skeleton-gradient {
+  background: linear-gradient(90deg, rgb(221 221 221) 40%, rgb(238 238 238), rgb(221 221 221) 60%)
+    180% / 200% 100%;
+  animation: 2s ease-in-out 0s infinite normal none running skeleton-gradient-animation;
+}
+
+@keyframes skeleton-gradient-animation {
+  100% {
+    background-position-x: -20%;
   }
 }

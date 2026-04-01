@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS `PREFIX_api_client`
      UNIQUE KEY `api_client_client_name_idx` (`client_name`,`external_issuer`)
 ) ENGINE=ENGINE_TYPE DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+/* PHP:drop_index_if_exists('image_type', 'image_type_name'); */;
 ALTER TABLE `PREFIX_image_type`
     CHANGE `id_image_type` `id_image_type` int(10) unsigned NOT NULL AUTO_INCREMENT,
     CHANGE `width` `width` int(10) unsigned NOT NULL,
@@ -162,7 +163,6 @@ ALTER TABLE `PREFIX_image_type`
     CHANGE `products` `products`  tinyint(1) NOT NULL DEFAULT '1',
     CHANGE `manufacturers` `manufacturers`  tinyint(1) NOT NULL DEFAULT '1',
     CHANGE `stores` `stores` tinyint(1) NOT NULL DEFAULT '1',
-    DROP key `image_type_name`,
     ADD UNIQUE KEY `UNIQ_907C95215E237E06` (`name`);
 
 CREATE TABLE IF NOT EXISTS `PREFIX_mutation` (
@@ -459,7 +459,7 @@ INSERT INTO `PREFIX_configuration` (`name`, `value`, `date_add`, `date_upd`) VAL
 /* Add theme_name in image type table */
 /* https://github.com/PrestaShop/PrestaShop/pull/38745 */
 /* https://github.com/PrestaShop/PrestaShop/pull/38767 */
+/* PHP:drop_index_if_exists('image_type', 'UNIQ_907C95215E237E06'); */;
 ALTER TABLE `PREFIX_image_type`
     ADD COLUMN `theme_name` VARCHAR(255) DEFAULT NULL AFTER `stores`,
-    ADD UNIQUE KEY `UNIQ_907C95215E237E0614E48A3B` (`name`,`theme_name`),
-    DROP INDEX `UNIQ_907C95215E237E06`;
+    ADD UNIQUE KEY `UNIQ_907C95215E237E0614E48A3B` (`name`,`theme_name`);

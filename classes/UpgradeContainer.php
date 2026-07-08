@@ -28,6 +28,7 @@ use PrestaShop\Module\AutoUpgrade\Backup\BackupManager;
 use PrestaShop\Module\AutoUpgrade\Environment as UpdateEnvironment;
 use PrestaShop\Module\AutoUpgrade\Log\Logger;
 use PrestaShop\Module\AutoUpgrade\Log\WebLogger;
+use PrestaShop\Module\AutoUpgrade\Migrations\MigrationsRepository;
 use PrestaShop\Module\AutoUpgrade\Parameters\ConfigurationStorage;
 use PrestaShop\Module\AutoUpgrade\Parameters\ConfigurationValidator;
 use PrestaShop\Module\AutoUpgrade\Parameters\FileStorage;
@@ -170,6 +171,9 @@ class UpgradeContainer
 
     /** @var LogsService */
     private $logsService;
+
+    /** @var MigrationsRepository */
+    private $migrationsRepository;
 
     /** @var ModuleAdapter */
     private $moduleAdapter;
@@ -671,6 +675,21 @@ class UpgradeContainer
         }
 
         return $this->quarantineZone;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function getMigrationsRepository(): MigrationsRepository
+    {
+        if (null === $this->migrationsRepository) {
+            $this->migrationsRepository = new MigrationsRepository(
+                dirname(__DIR__) . '/upgrade/migrations',
+                $this->getTranslator()
+            );
+        }
+
+        return $this->migrationsRepository;
     }
 
     public function getUpdateState(): UpdateState

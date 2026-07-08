@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+
+namespace PrestaShop\Module\AutoUpgrade\Migrations\Versions\Version_9_0_0_catchup;
+
+use PrestaShop\Module\AutoUpgrade\Migrations\AbstractMigration;
+
+class ConfigurationCatchup extends AbstractMigration
+{
+    protected function up(): void
+    {
+        $this->addPhpFunction('add_configuration_if_not_exists', ['PS_PRODUCT_SHORT_DESC_LIMIT', '800']);
+        $this->addSql('/* 1.7.3.0 */
+UPDATE `PREFIX_configuration` SET `value` = \'In Stock\' WHERE `name` = "PS_LABEL_IN_STOCK_PRODUCTS" AND `value` IS NULL');
+        $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'Product available for orders\' WHERE `name` = "PS_LABEL_OOS_PRODUCTS_BOA" AND `value` IS NULL');
+        $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'Out-of-Stock\' WHERE `name` = "PS_LABEL_OOS_PRODUCTS_BOD" AND `value` IS NULL');
+        $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'28\' WHERE `name` = "SHOP_LOGO_HEIGHT" AND `value` = \'23\'');
+        $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'100\' WHERE `name` = "SHOP_LOGO_WIDTH" AND `value` = \'117\'');
+    }
+}

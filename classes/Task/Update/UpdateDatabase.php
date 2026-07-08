@@ -23,6 +23,8 @@ namespace PrestaShop\Module\AutoUpgrade\Task\Update;
 
 use Exception;
 use PrestaShop\Module\AutoUpgrade\Exceptions\ProcessException;
+use PrestaShop\Module\AutoUpgrade\Migrations\MigrationOperation;
+use PrestaShop\Module\AutoUpgrade\Migrations\MigrationRunner;
 use PrestaShop\Module\AutoUpgrade\Parameters\UpgradeFileNames;
 use PrestaShop\Module\AutoUpgrade\Progress\Backlog;
 use PrestaShop\Module\AutoUpgrade\Task\AbstractTask;
@@ -42,14 +44,16 @@ class UpdateDatabase extends AbstractTask
     /** @var CoreUpgrader */
     private $coreUpgrader;
 
+    /** @var MigrationRunner */
+    private $migrationRunner;
+
     public function run(): int
     {
         try {
             if (!$this->container->getFileStorage()->exists(UpgradeFileNames::SQL_TO_EXECUTE_LIST)) {
                 $this->warmUp();
-                $currentVersion = $this->container->getUpdateState()->getCurrentVersion();
-                $sqlContentList = $this->getCoreUpgrader()->getSqlContentList($currentVersion);
-                $backlog = new Backlog(array_reverse($sqlContentList), count($sqlContentList));
+                $operations = $this->getMigrationOperations();
+                $backlog = new Backlog(array_reverse($operations), count($operations));
             } else {
                 $this->getCoreUpgrader()->setupUpdateEnvironment();
                 $backlog = Backlog::fromContents($this->container->getFileStorage()->load(UpgradeFileNames::SQL_TO_EXECUTE_LIST));
@@ -87,6 +91,40 @@ class UpdateDatabase extends AbstractTask
         $this->logger->info($this->translator->trans('Database updated. Now updating your Addons modules...'));
 
         return ExitCode::SUCCESS;
+    }
+
+    /**
+     * Flat list of the operations of every migration to apply, in execution order,
+     * in their serialized form (to be stored in the update backlog).
+     *
+     * @return array<array<string, mixed>>
+     *
+     * @throws ProcessException
+     */
+    protected function getMigrationOperations(): array
+    {
+        $migrations = $this->container->getMigrationsRepository()->getMigrations(
+            $this->container->getUpdateState()->getCurrentVersion(),
+            $this->container->getUpdateState()->getDestinationVersion()
+        );
+
+        $operations = [];
+        foreach ($migrations as $migration) {
+            foreach ($migration->getOperations() as $operation) {
+                $operations[] = $operation->toArray();
+            }
+        }
+
+        return $operations;
+    }
+
+    public function getMigrationRunner(): MigrationRunner
+    {
+        if ($this->migrationRunner === null) {
+            $this->migrationRunner = new MigrationRunner($this->container, $this->logger);
+        }
+
+        return $this->migrationRunner;
     }
 
     public function getCoreUpgrader(): CoreUpgrader
@@ -174,8 +212,8 @@ class UpdateDatabase extends AbstractTask
 
     protected function updateDatabase(Backlog $backlog): void
     {
-        $sqlContent = $backlog->getNext();
-        $this->getCoreUpgrader()->runQuery($sqlContent['version'], $sqlContent['query']);
+        $operation = MigrationOperation::fromArray($backlog->getNext());
+        $this->getMigrationRunner()->run($operation);
         $this->container->getFileStorage()->save($backlog->dump(), UpgradeFileNames::SQL_TO_EXECUTE_LIST);
     }
 }

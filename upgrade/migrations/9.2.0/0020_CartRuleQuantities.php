@@ -27,18 +27,24 @@ class CartRuleQuantities extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- https://github.com/PrestaShop/PrestaShop/pull/40867
--- Change date_to field to make it nullable in cart_rule
-ALTER TABLE `PREFIX_cart_rule` CHANGE `date_to` `date_to` datetime DEFAULT NULL');
+        /**
+         * Change date_to field to make it nullable in cart_rule
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/40867
+         */
+        $this->addSql('ALTER TABLE `PREFIX_cart_rule` CHANGE `date_to` `date_to` datetime DEFAULT NULL');
         $this->addPhpFunction('add_column', ['cart_rule', 'total_quantity', 'int(10) UNSIGNED DEFAULT NULL AFTER `minimum_product_quantity`']);
-        $this->addSql('-- Populate the new total_quantity column for existing cart rules.
--- Previously, the `quantity` field represented the number of uses LEFT (decremented on each use).
--- The new `total_quantity` field represents the ORIGINAL total number of allowed uses.
--- Formula: total_quantity = quantity (remaining) + quantityUsed (consumed in non-error orders)
--- Cart rules with quantity IS NULL are unlimited and keep total_quantity as NULL.
--- The subquery mirrors the logic from DiscountRepository::getQuantityUsedInOrders,
--- counting non-deleted order_cart_rule entries on orders not in error state.
-UPDATE `PREFIX_cart_rule` cr
+
+        /**
+         * Populate the new total_quantity column for existing cart rules.
+         * Previously, the `quantity` field represented the number of uses LEFT (decremented on each use).
+         * The new `total_quantity` field represents the ORIGINAL total number of allowed uses.
+         * Formula: total_quantity = quantity (remaining) + quantityUsed (consumed in non-error orders)
+         * Cart rules with quantity IS NULL are unlimited and keep total_quantity as NULL.
+         * The subquery mirrors the logic from DiscountRepository::getQuantityUsedInOrders,
+         * counting non-deleted order_cart_rule entries on orders not in error state.
+         */
+        $this->addSql('UPDATE `PREFIX_cart_rule` cr
 LEFT JOIN (
     SELECT ocr.`id_cart_rule`, COUNT(*) as quantity_used
     FROM `PREFIX_order_cart_rule` ocr

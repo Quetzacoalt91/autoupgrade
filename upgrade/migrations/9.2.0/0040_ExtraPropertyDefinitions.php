@@ -27,9 +27,12 @@ class ExtraPropertyDefinitions extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- https://github.com/PrestaShop/PrestaShop/pull/41092
--- Create the extra property definition registry table.
-CREATE TABLE IF NOT EXISTS `PREFIX_extra_property_definition` (
+        /**
+         * Create the extra property definition registry table
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/41092
+         */
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_extra_property_definition` (
   `id_extra_property_definition` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `entity_name` varchar(64) NOT NULL,
   `module_name` varchar(64) DEFAULT NULL,

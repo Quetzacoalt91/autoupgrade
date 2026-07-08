@@ -27,11 +27,14 @@ class ProductConditionEnum extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- https://github.com/PrestaShop/PrestaShop/pull/40031
-/* Extend the product condition enum with new values */
-ALTER TABLE `PREFIX_product` MODIFY COLUMN `condition`
-  ENUM(\'new\', \'used\', \'refurbished\', \'open_box\', \'damaged\', \'new_with_defects\') NOT NULL DEFAULT \'new\'');
+        /**
+         * Extend the product condition enum with new values
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/40031
+         */
+        $this->addSql('ALTER TABLE `PREFIX_product` MODIFY COLUMN `condition`
+          ENUM(\'new\', \'used\', \'refurbished\', \'open_box\', \'damaged\', \'new_with_defects\') NOT NULL DEFAULT \'new\'');
         $this->addSql('ALTER TABLE `PREFIX_product_shop` MODIFY COLUMN `condition`
-  ENUM(\'new\', \'used\', \'refurbished\', \'open_box\', \'damaged\', \'new_with_defects\') NOT NULL DEFAULT \'new\'');
+          ENUM(\'new\', \'used\', \'refurbished\', \'open_box\', \'damaged\', \'new_with_defects\') NOT NULL DEFAULT \'new\'');
     }
 }

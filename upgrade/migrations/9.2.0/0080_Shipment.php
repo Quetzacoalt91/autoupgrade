@@ -23,18 +23,15 @@ namespace PrestaShop\Module\AutoUpgrade\Migrations\Versions\Version_9_2_0;
 
 use PrestaShop\Module\AutoUpgrade\Migrations\AbstractMigration;
 
-class ProductConditionEnum extends AbstractMigration
+class Shipment extends AbstractMigration
 {
     protected function up(): void
     {
         /*
-         * Extend the product condition enum with new values
+         * Soft delete support on shipments
          *
-         * @see https://github.com/PrestaShop/PrestaShop/pull/40031
+         * @see https://github.com/PrestaShop/PrestaShop/pull/41662
          */
-        $this->addSql('ALTER TABLE `PREFIX_product` MODIFY COLUMN `condition`
-          ENUM(\'new\', \'used\', \'refurbished\', \'open_box\', \'damaged\', \'new_with_defects\') NOT NULL DEFAULT \'new\'');
-        $this->addSql('ALTER TABLE `PREFIX_product_shop` MODIFY COLUMN `condition`
-          ENUM(\'new\', \'used\', \'refurbished\', \'open_box\', \'damaged\', \'new_with_defects\') NOT NULL DEFAULT \'new\'');
+        $this->addPhpFunction('add_column', ['shipment', 'deleted', 'TINYINT(1) NOT NULL DEFAULT 0']);
     }
 }

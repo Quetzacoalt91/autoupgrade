@@ -27,7 +27,7 @@ class ExtraPropertyDefinitions extends AbstractMigration
 {
     protected function up(): void
     {
-        /**
+        /*
          * Create the extra property definition registry table
          *
          * @see https://github.com/PrestaShop/PrestaShop/pull/41092

@@ -27,7 +27,7 @@ class CartRuleQuantities extends AbstractMigration
 {
     protected function up(): void
     {
-        /**
+        /*
          * Change date_to field to make it nullable in cart_rule
          *
          * @see https://github.com/PrestaShop/PrestaShop/pull/40867
@@ -35,7 +35,7 @@ class CartRuleQuantities extends AbstractMigration
         $this->addSql('ALTER TABLE `PREFIX_cart_rule` CHANGE `date_to` `date_to` datetime DEFAULT NULL');
         $this->addPhpFunction('add_column', ['cart_rule', 'total_quantity', 'int(10) UNSIGNED DEFAULT NULL AFTER `minimum_product_quantity`']);
 
-        /**
+        /*
          * Populate the new total_quantity column for existing cart rules.
          * Previously, the `quantity` field represented the number of uses LEFT (decremented on each use).
          * The new `total_quantity` field represents the ORIGINAL total number of allowed uses.

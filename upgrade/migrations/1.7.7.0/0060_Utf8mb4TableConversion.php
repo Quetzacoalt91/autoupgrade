@@ -27,8 +27,8 @@ class Utf8mb4TableConversion extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Utf8mb4 conversion */
-ALTER TABLE `PREFIX_access` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
+        // Utf8mb4 conversion
+        $this->addSql('ALTER TABLE `PREFIX_access` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_accessory` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_address` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_address_format` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
@@ -172,8 +172,10 @@ ALTER TABLE `PREFIX_access` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_gen
         $this->addSql('ALTER TABLE `PREFIX_order_state_lang` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_pack` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_page` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
-        $this->addSql('/* php:execute_sql_if_table_exists(\'pagenotfound\', \'ALTER TABLE `PREFIX_pagenotfound` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\'); */
-ALTER TABLE `PREFIX_page_type` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
+
+        $this->addPhpFunction('execute_sql_if_table_exists', ['pagenotfound', 'ALTER TABLE `PREFIX_pagenotfound` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;']);
+
+        $this->addSql('ALTER TABLE `PREFIX_page_type` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_page_viewed` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_product` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $this->addSql('ALTER TABLE `PREFIX_product_attachment` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');

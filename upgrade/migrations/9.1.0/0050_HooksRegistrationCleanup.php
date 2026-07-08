@@ -27,8 +27,10 @@ class HooksRegistrationCleanup extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Auto generated hooks added for version 9.1.0 */
-INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
+        /*
+         * Auto generated hooks added for version 9.1.0
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
     (NULL, \'actionModuleUpgradeAfter\', \'\', \'\', \'1\'),
     (NULL, \'actionModuleEnable\', \'\', \'\', \'1\'),
     (NULL, \'actionModuleDisable\', \'\', \'\', \'1\'),
@@ -51,13 +53,19 @@ INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`
     (NULL, \'actionOverrideShippingFreePrice\', \'Override price that determines free shipping\', \'Allows modules to override the free shipping price and return their custom value, for example to specify it by zone or other criteria.\', \'1\'),
     (NULL, \'actionOverrideShippingFreeWeight\', \'Override weight that determines free shipping\', \'Allows modules to override the free shipping weight and return their custom value, for example to specify it by zone or other criteria.\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
-        $this->addSql('/* Auto generated hooks removed for version 9.1.0 */
-DELETE FROM `PREFIX_hook` WHERE `name` IN (
+
+        /*
+         * Auto generated hooks removed for version 9.1.0
+         */
+        $this->addSql('DELETE FROM `PREFIX_hook` WHERE `name` IN (
     \'actionCartRuleFormDataProviderData\',
     \'actionCartRuleFormDataProviderDefaultData\'
 )');
-        $this->addSql('/* Clean hook registrations related to removed hooks */
-DELETE FROM `PREFIX_hook_module` WHERE `id_hook` NOT IN (SELECT id_hook FROM `PREFIX_hook`)');
+
+        /*
+         * Clean hook registrations related to removed hooks
+         */
+        $this->addSql('DELETE FROM `PREFIX_hook_module` WHERE `id_hook` NOT IN (SELECT id_hook FROM `PREFIX_hook`)');
         $this->addSql('DELETE FROM `PREFIX_hook_module_exceptions` WHERE `id_hook` NOT IN (SELECT id_hook FROM `PREFIX_hook`)');
     }
 }

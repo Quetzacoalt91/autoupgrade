@@ -27,8 +27,8 @@ class ProductRedirectType extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- Need old value before updating
-ALTER TABLE `PREFIX_product` CHANGE `redirect_type` `redirect_type`
+        // Need old value before updating
+        $this->addSql('ALTER TABLE `PREFIX_product` CHANGE `redirect_type` `redirect_type`
   ENUM(\'\',\'404\',
   \'301\', \'302\',
   \'301-product\',\'302-product\',\'301-category\',\'302-category\')
@@ -42,8 +42,9 @@ ALTER TABLE `PREFIX_product` CHANGE `redirect_type` `redirect_type`
         $this->addSql('UPDATE `PREFIX_product` SET redirect_type = \'302-product\' WHERE redirect_type = \'302\'');
         $this->addSql('UPDATE `PREFIX_product_shop` SET redirect_type = \'301-product\' WHERE redirect_type = \'301\'');
         $this->addSql('UPDATE `PREFIX_product_shop` SET redirect_type = \'302-product\' WHERE redirect_type = \'302\'');
-        $this->addSql('-- Can now remove old value
-ALTER TABLE `PREFIX_product` CHANGE `redirect_type` `redirect_type`
+
+        // Can now remove old value
+        $this->addSql('ALTER TABLE `PREFIX_product` CHANGE `redirect_type` `redirect_type`
   ENUM(\'\',\'404\',\'301-product\',\'302-product\',\'301-category\',\'302-category\')
   CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT \'\'');
         $this->addSql('ALTER TABLE `PREFIX_product_shop` CHANGE `redirect_type` `redirect_type`

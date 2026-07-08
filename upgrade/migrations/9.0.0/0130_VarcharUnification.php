@@ -27,9 +27,12 @@ class VarcharUnification extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Unify varchar limits */
-/* https://github.com/PrestaShop/PrestaShop/pull/35882 */
-ALTER TABLE `PREFIX_meta_lang` CHANGE `url_rewrite` `url_rewrite` varchar(255) NOT NULL');
+        /*
+         * Unify varchar limits
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/35882
+         */
+        $this->addSql('ALTER TABLE `PREFIX_meta_lang` CHANGE `url_rewrite` `url_rewrite` varchar(255) NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_orders` CHANGE `reference` `reference` VARCHAR(255)');
         $this->addSql('ALTER TABLE `PREFIX_tax_rules_group` CHANGE `name` `name` VARCHAR(64) NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_mail` CHANGE `recipient` `recipient` varchar(255) NOT NULL');
@@ -38,8 +41,12 @@ ALTER TABLE `PREFIX_meta_lang` CHANGE `url_rewrite` `url_rewrite` varchar(255) N
         $this->addSql('ALTER TABLE `PREFIX_shop_url` CHANGE `domain_ssl` `domain_ssl` varchar(255) NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_feature_flag` CHANGE `label_wording` `label_wording` VARCHAR(191) DEFAULT \'\' NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_feature_flag` CHANGE `description_wording` `description_wording` VARCHAR(191) DEFAULT \'\' NOT NULL');
-        $this->addSql('/* Raise payment reference to unify with orders table */
-/* https://github.com/PrestaShop/PrestaShop/pull/37038 */
-ALTER TABLE `PREFIX_order_payment` CHANGE `order_reference` `order_reference` VARCHAR(255)');
+
+        /*
+         * Raise payment reference to unify with orders table
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/37038
+         */
+        $this->addSql('ALTER TABLE `PREFIX_order_payment` CHANGE `order_reference` `order_reference` VARCHAR(255)');
     }
 }

@@ -30,8 +30,9 @@ class CurrencyPrecisionAndLang extends AbstractMigration
         $this->addPhpFunction('add_column', ['currency', 'numeric_iso_code', 'varchar(3) DEFAULT NULL AFTER `iso_code`']);
         $this->addPhpFunction('add_column', ['currency', 'precision', 'int(2) NOT NULL DEFAULT 6 AFTER `numeric_iso_code`']);
         $this->addSql('ALTER TABLE `PREFIX_currency` ADD KEY `currency_iso_code` (`iso_code`)');
-        $this->addSql('/* Localized currency information */
-CREATE TABLE IF NOT EXISTS `PREFIX_currency_lang` (
+
+        // Localized currency information
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_currency_lang` (
     `id_currency` int(10) unsigned NOT NULL,
     `id_lang` int(10) unsigned NOT NULL,
     `name` varchar(255) NOT NULL,

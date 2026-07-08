@@ -27,10 +27,15 @@ class ObsoleteTablesAndColumns extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* 1.7.8.0 */
-DROP TABLE IF EXISTS `PREFIX_order_slip_detail_tax`');
-        $this->addSql('/* 8.0.0 */
-DROP TABLE IF EXISTS `PREFIX_attribute_impact`');
+        /*
+         * 1.7.8.0
+         */
+        $this->addSql('DROP TABLE IF EXISTS `PREFIX_order_slip_detail_tax`');
+
+        /*
+         * 8.0.0
+         */
+        $this->addSql('DROP TABLE IF EXISTS `PREFIX_attribute_impact`');
         $this->addPhpFunction('drop_column_if_exists', ['orders', 'shipping_number']);
     }
 }

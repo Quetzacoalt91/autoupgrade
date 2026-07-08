@@ -27,8 +27,8 @@ class ModuleManagerTabPositions extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Module Manager tab should be the first tab in Modules Tab */
-UPDATE `PREFIX_tab` SET `position` = 0 WHERE `class_name` = \'AdminModulesSf\' AND `position`= 1');
+        // Module Manager tab should be the first tab in Modules Tab
+        $this->addSql('UPDATE `PREFIX_tab` SET `position` = 0 WHERE `class_name` = \'AdminModulesSf\' AND `position`= 1');
         $this->addSql('UPDATE `PREFIX_tab` SET `position` = 1 WHERE `class_name` = \'AdminParentModulesCatalog\' AND `position`= 0');
     }
 }

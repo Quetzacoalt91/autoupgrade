@@ -27,10 +27,12 @@ class Hooks extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- PrestaShop 9.0.0 missing changes
-
-INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
-  -- https://github.com/PrestaShop/PrestaShop/pull/34133
+        /*
+         * PrestaShop 9.0.0 missing changes
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/34133
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
   (NULL, \'actionSubmitAccountBefore\', \'Before customer account creation\', \'This hook is called before a customer account creation\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
     }

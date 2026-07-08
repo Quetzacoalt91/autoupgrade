@@ -28,8 +28,11 @@ class ProductPageFeatureFlags extends AbstractMigration
     protected function up(): void
     {
         $this->addPhpFunction('ps_810_update_product_page_feature_flags');
-        $this->addSql('/* add new feature flag from 8.0.x to 8.1.0 */
-INSERT INTO `PREFIX_feature_flag` (`name`, `label_wording`, `label_domain`, `description_wording`, `description_domain`, `state`, `stability`)
+
+        /*
+         * add new feature flag from 8.0.x to 8.1.0
+         */
+        $this->addSql('INSERT INTO `PREFIX_feature_flag` (`name`, `label_wording`, `label_domain`, `description_wording`, `description_domain`, `state`, `stability`)
 VALUES
     (\'attribute_group\', \'Attribute group\', \'Admin.Advparameters.Feature\', \'Enable / Disable migrated attribute group page.\', \'Admin.Advparameters.Help\', 0, \'beta\'),
     (\'authorization_server\', \'Authorization server\', \'Admin.Advparameters.Feature\', \'Enable or disable the authorization server page.\', \'Admin.Advparameters.Help\', 0, \'beta\'),

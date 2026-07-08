@@ -28,10 +28,14 @@ class AliasesAndImageTypeTheme extends AbstractMigration
     protected function up(): void
     {
         $this->addPhpFunction('ps_900_reorganize_aliases_tab');
-        $this->addSql('/* Add theme_name in image type table */
-/* https://github.com/PrestaShop/PrestaShop/pull/38745 */
-/* https://github.com/PrestaShop/PrestaShop/pull/38767 */
-ALTER TABLE `PREFIX_image_type`
+
+        /*
+         * Add theme_name in image type table
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/38745
+         * @see https://github.com/PrestaShop/PrestaShop/pull/38767
+         */
+        $this->addSql('ALTER TABLE `PREFIX_image_type`
     ADD COLUMN `theme_name` VARCHAR(255) DEFAULT NULL AFTER `stores`,
     ADD UNIQUE KEY `UNIQ_907C95215E237E0614E48A3B` (`name`,`theme_name`),
     DROP INDEX `UNIQ_907C95215E237E06`');

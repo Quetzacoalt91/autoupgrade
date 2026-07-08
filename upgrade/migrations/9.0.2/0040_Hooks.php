@@ -27,8 +27,10 @@ class Hooks extends AbstractMigration
 {
     protected function up(): void
     {
+        /*
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39913
+         */
         $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
-  -- https://github.com/PrestaShop/PrestaShop/pull/39913
   (NULL, \'actionOverrideQuantityAvailableByProduct\',\'Override available quantity by product\',\'Allows modules to override the available quantity returned by StockAvailable::getQuantityAvailableByProduct().\', \'1\'),
   (NULL, \'actionCheckAttributeQuantity\',\'Check product attribute quantity availability\',\'Allows modules to validate or override the stock availability check for a specific product combination.\', \'1\'),
   (NULL, \'actionOverrideProductQuantity\',\'Override product quantity calculation\',\'Allows modules to override the final product quantity returned by Product::getQuantity(), including cart-aware calculations.\', \'1\')

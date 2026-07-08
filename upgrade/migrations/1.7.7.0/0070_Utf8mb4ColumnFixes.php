@@ -34,8 +34,10 @@ class Utf8mb4ColumnFixes extends AbstractMigration
         $this->addSql('ALTER TABLE `PREFIX_attribute_group` CHANGE `group_type` `group_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_search_word` CHANGE `word` `word` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_meta` CHANGE `page` `page` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL');
-        $this->addSql('/* php:execute_sql_if_table_exists(\'statssearch\', \'ALTER TABLE `PREFIX_statssearch` CHANGE `keywords` `keywords` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;\'); */
-ALTER TABLE `PREFIX_stock` CHANGE `reference` `reference` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL');
+
+        $this->addPhpFunction('execute_sql_if_table_exists', ['statssearch', 'ALTER TABLE `PREFIX_statssearch` CHANGE `keywords` `keywords` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;']);
+
+        $this->addSql('ALTER TABLE `PREFIX_stock` CHANGE `reference` `reference` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_stock` CHANGE `ean13` `ean13` varchar(13) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL');
         $this->addSql('ALTER TABLE `PREFIX_stock` CHANGE `isbn` `isbn` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL');
         $this->addSql('ALTER TABLE `PREFIX_stock` CHANGE `upc` `upc` varchar(12) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL');

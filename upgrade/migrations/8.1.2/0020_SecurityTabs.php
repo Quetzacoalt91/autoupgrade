@@ -27,12 +27,12 @@ class SecurityTabs extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/*
-Security section tabs were correctly added (ps_800_add_security_tab.php) for people coming from 1.7.8,
-but had missing wordings on new 8.0.0-8.1.1 installs.
-We fixed it for people installing fresh 8.1.2, but we also need to fix it for people that started on 8.0.0-8.1.1 versions.
-*/
-UPDATE `PREFIX_tab` SET wording_domain = \'Admin.Navigation.Menu\', wording = \'Security\' WHERE class_name = \'AdminParentSecurity\'');
+        /*
+         * Security section tabs were correctly added (ps_800_add_security_tab.php) for people coming from 1.7.8,
+         * but had missing wordings on new 8.0.0-8.1.1 installs.
+         * We fixed it for people installing fresh 8.1.2, but we also need to fix it for people that started on 8.0.0-8.1.1 versions.
+         */
+        $this->addSql('UPDATE `PREFIX_tab` SET wording_domain = \'Admin.Navigation.Menu\', wording = \'Security\' WHERE class_name = \'AdminParentSecurity\'');
         $this->addSql('UPDATE `PREFIX_tab` SET wording_domain = \'Admin.Navigation.Menu\', wording = \'Employee Sessions\' WHERE class_name = \'AdminSecuritySessionEmployee\'');
         $this->addSql('UPDATE `PREFIX_tab` SET wording_domain = \'Admin.Navigation.Menu\', wording = \'Customer Sessions\' WHERE class_name = \'AdminSecuritySessionCustomer\'');
     }

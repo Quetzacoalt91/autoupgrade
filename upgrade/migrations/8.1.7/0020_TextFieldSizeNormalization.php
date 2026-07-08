@@ -27,8 +27,10 @@ class TextFieldSizeNormalization extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Normalize database text field sizes on all installs - see https://github.com/PrestaShop/PrestaShop/pull/35749 */
-ALTER TABLE `PREFIX_address` CHANGE `other` `other` MEDIUMTEXT');
+        /*
+         * Normalize database text field sizes on all installs - see https://github.com/PrestaShop/PrestaShop/pull/35749
+         */
+        $this->addSql('ALTER TABLE `PREFIX_address` CHANGE `other` `other` MEDIUMTEXT');
         $this->addSql('ALTER TABLE `PREFIX_attachment_lang` CHANGE `description` `description` MEDIUMTEXT');
         $this->addSql('ALTER TABLE `PREFIX_cart_rule` CHANGE `description` `description` MEDIUMTEXT');
         $this->addSql('ALTER TABLE `PREFIX_cart` CHANGE `delivery_option` `delivery_option` MEDIUMTEXT NOT NULL');

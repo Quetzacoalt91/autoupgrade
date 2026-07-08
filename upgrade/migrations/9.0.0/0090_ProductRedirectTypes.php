@@ -27,9 +27,12 @@ class ProductRedirectTypes extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Change all empty string to \'default\' */
-/* https://github.com/PrestaShop/PrestaShop/pull/35996 */
-UPDATE `PREFIX_product` SET `redirect_type` = \'default\' WHERE `redirect_type` = \'\'');
+        /*
+         * Change all empty string to 'default'
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/35996
+         */
+        $this->addSql('UPDATE `PREFIX_product` SET `redirect_type` = \'default\' WHERE `redirect_type` = \'\'');
         $this->addSql('UPDATE `PREFIX_product_shop` SET `redirect_type` = \'default\' WHERE `redirect_type` = \'\'');
         $this->addSql('ALTER TABLE `PREFIX_product` MODIFY COLUMN `redirect_type` ENUM(
     \'404\',\'410\',\'301-product\',\'302-product\',\'301-category\',\'302-category\',\'200-displayed\',\'404-displayed\',\'410-displayed\',\'default\'

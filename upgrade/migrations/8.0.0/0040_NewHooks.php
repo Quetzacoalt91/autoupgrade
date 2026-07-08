@@ -42,8 +42,11 @@ class NewHooks extends AbstractMigration
   (NULL, \'displayModuleConfigureExtraButtons\', \'Module configuration - After toolbar buttons\', \'This hook allows to add toolbar\'\'s additional content on module configuration page\', \'1\'),
   (NULL, \'actionGetAlternativeSearchPanels\', \'Additional search panel\', \'This hook allows to add an additional search panel for external providers in PrestaShop back office\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
-        $this->addSql('/* Auto generated hooks added for version 8.0.0 */
-INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
+
+        /*
+         * Auto generated hooks added for version 8.0.0
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
   (NULL, \'actionCreateProductFormBuilderModifier\', \'Modify create product identifiable object form\', \'This hook allows to modify create product identifiable object forms content by modifying form builder data or FormBuilder itself\', \'1\'),
   (NULL, \'actionCombinationListFormBuilderModifier\', \'Modify combination list identifiable object form\', \'This hook allows to modify combination list identifiable object forms content by modifying form builder data or FormBuilder itself\', \'1\'),
   (NULL, \'actionProductImageFormBuilderModifier\', \'Modify product image identifiable object form\', \'This hook allows to modify product image identifiable object forms content by modifying form builder data or FormBuilder itself\', \'1\'),

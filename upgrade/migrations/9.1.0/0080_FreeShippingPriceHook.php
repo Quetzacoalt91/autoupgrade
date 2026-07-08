@@ -27,8 +27,10 @@ class FreeShippingPriceHook extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* New hooks implemented in https://github.com/PrestaShop/PrestaShop/pull/40730 */
-INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
+        /*
+         * New hooks implemented in https://github.com/PrestaShop/PrestaShop/pull/40730
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
   (NULL, \'actionOverrideShippingFreePrice\', \'Override price that determines free shipping\', \'Allows modules to override the free shipping price and return their custom value, for example to specify it by zone or other criteria.\', \'1\'),
   (NULL, \'actionOverrideShippingFreeWeight\', \'Override weight that determines free shipping\', \'Allows modules to override the free shipping weight and return their custom value, for example to specify it by zone or other criteria.\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');

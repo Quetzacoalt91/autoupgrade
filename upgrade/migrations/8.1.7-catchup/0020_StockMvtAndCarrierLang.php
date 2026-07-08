@@ -27,8 +27,10 @@ class StockMvtAndCarrierLang extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* 1.7.2.0 */
-ALTER TABLE `PREFIX_stock_mvt` CHANGE `sign` `sign` SMALLINT(6) NOT NULL DEFAULT \'1\'');
+        /*
+         * 1.7.2.0
+         */
+        $this->addSql('ALTER TABLE `PREFIX_stock_mvt` CHANGE `sign` `sign` SMALLINT(6) NOT NULL DEFAULT \'1\'');
         $this->addSql('ALTER TABLE `PREFIX_carrier_lang` CHANGE `delay` `delay` VARCHAR(512) DEFAULT NULL');
     }
 }

@@ -28,10 +28,13 @@ class FeatureFlagIntroduction extends AbstractMigration
     protected function up(): void
     {
         $this->addPhpFunction('ps_1780_add_feature_flag_tab');
-        $this->addSql('/* this table should be created by Doctrine but we need to perform INSERT and the 1.7.8.0.sql script is called
-before Doctrine schema update */
-/* consequently we create the table manually */
-CREATE TABLE IF NOT EXISTS `PREFIX_feature_flag` (
+
+        /*
+         * this table should be created by Doctrine but we need to perform INSERT and the 1.7.8.0.sql script is called
+         * before Doctrine schema update
+         * consequently we create the table manually
+         */
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_feature_flag` (
   `id_feature_flag` INT(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(191) COLLATE utf8mb4_unicode_ci NOT NULL,
   `state` TINYINT(1) NOT NULL DEFAULT \'0\',

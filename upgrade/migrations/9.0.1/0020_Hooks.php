@@ -27,14 +27,16 @@ class Hooks extends AbstractMigration
 {
     protected function up(): void
     {
+        /*
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39366
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39277
+         * @see https://github.com/PrestaShop/PrestaShop/pull/38487
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39716
+         */
         $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
-  -- https://github.com/PrestaShop/PrestaShop/pull/39366
   (NULL, \'actionCheckoutStepRenderTemplate\',\'Modify the parameters of the checkout step template rendering\',\'This hook is called when rendering every checkout step template\', \'1\'),
-  -- https://github.com/PrestaShop/PrestaShop/pull/39277
   (NULL, \'actionModifyHtmlPurifierConfig\', \'Called when configuring HTMLPurifier\', \'Allows modules to modify the HTMLPurifier definition by adding custom allowed HTML elements or attributes during Tools::purifyHTML().\', \'1\'),
-  -- https://github.com/PrestaShop/PrestaShop/pull/38487
   (NULL, \'actionGetPdfTemplateObject\', \'Get PDF template object\', \'This hook allows to recieve a PDF template object from modules\', \'1\'),
-  -- https://github.com/PrestaShop/PrestaShop/pull/39716
   (NULL, \'additionalHtmlAttributesFormFields\', \'\', \'\', \'1\'),
   (NULL, \'actionGetCartRuleContextualValue\', \'\', \'\', \'1\'),
   (NULL, \'actionApplyCartRule\', \'\', \'\', \'1\'),

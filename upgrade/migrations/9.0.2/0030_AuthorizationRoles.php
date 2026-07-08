@@ -27,8 +27,10 @@ class AuthorizationRoles extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- https://github.com/PrestaShop/PrestaShop/pull/39914
-INSERT IGNORE INTO `PREFIX_authorization_role` (`slug`) VALUES
+        /*
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39914
+         */
+        $this->addSql('INSERT IGNORE INTO `PREFIX_authorization_role` (`slug`) VALUES
   (\'ROLE_MOD_TAB_DEFAULT_READ\'),
   (\'ROLE_MOD_TAB_DEFAULT_CREATE\'),
   (\'ROLE_MOD_TAB_DEFAULT_UPDATE\'),

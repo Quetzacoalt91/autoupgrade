@@ -261,8 +261,11 @@ VALUES (NULL, \'actionOrderMessageFormBuilderModifier\', \'Modify order message 
         \'This hook allows to modify data which is about to be used in template for credit slip grid\', \'1\'),
        (NULL, \'displayAfterTitleTag\', \'After title tag\', \'Use this hook to add content after title tag\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
-        $this->addSql('/* Update wrong hook names */
-UPDATE `PREFIX_hook_module` AS hm
+
+        /*
+         * Update wrong hook names
+         */
+        $this->addSql('UPDATE `PREFIX_hook_module` AS hm
 INNER JOIN `PREFIX_hook` AS hfrom ON hm.id_hook = hfrom.id_hook AND hfrom.name = \'actionAdministrationPageFormSave\'
 INNER JOIN `PREFIX_hook` AS hto ON hto.name = \'actionAdministrationPageSave\'
 SET hm.id_hook = hto.id_hook');
@@ -282,7 +285,10 @@ INNER JOIN `PREFIX_hook` AS hfrom ON hm.id_hook = hfrom.id_hook AND hfrom.name =
 INNER JOIN `PREFIX_hook` AS hto ON hto.name = \'actionFrontControllerInitAfter\'
 SET hm.id_hook = hto.id_hook');
         $this->addSql('DELETE FROM `PREFIX_hook` WHERE name = \'actionFrontControllerAfterInit\'');
-        $this->addSql('/* Update wrong hook alias */
-UPDATE `PREFIX_hook_alias` SET name = \'displayHeader\', alias = \'Header\' WHERE name = \'Header\' AND alias = \'displayHeader\'');
+
+        /*
+         * Update wrong hook alias
+         */
+        $this->addSql('UPDATE `PREFIX_hook_alias` SET name = \'displayHeader\', alias = \'Header\' WHERE name = \'Header\' AND alias = \'displayHeader\'');
     }
 }

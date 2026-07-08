@@ -27,8 +27,10 @@ class HooksAndPermissionsCatchup extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* 1.7.8.0 */
-INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
+        /*
+         * 1.7.8.0
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
   (\'actionAfterCreateZoneFormHandler\',\'Modify zone identifiable object data after creating it\',\'This hook allows to modify zone identifiable object forms data after it was created\',\'1\'),
   (\'actionAdminAdministrationControllerPostProcessBefore\',\'On post-process in Admin Configure Advanced Parameters Administration Controller\',\'This hook is called on Admin Configure Advanced Parameters Administration post-process before processing any form\',\'1\'),
   (\'actionAdminAdministrationControllerPostProcessGeneralBefore\',\'On post-process in Admin Configure Advanced Parameters Administration Controller\',\'This hook is called on Admin Configure Advanced Parameters Administration post-process before processing the General form\',\'1\'),
@@ -62,8 +64,11 @@ INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
   (\'actionAdminShopParametersOrderPreferencesControllerPostProcessGiftOptionsBefore\',\'On post-process in Admin Configure Shop Parameters Order Preferences Controller\',\'This hook is called on Admin Configure Shop Parameters Order Preferences post-process before processing the Gift Options form\',\'1\'),
   (\'displayAfterTitleTag\',\'After title tag\',\'Use this hook to add content after title tag\',\'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
-        $this->addSql('/* 8.0.0 */
-INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
+
+        /*
+         * 8.0.0
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
 	(\'actionAfterCreateCartSummaryFormHandler\',\'Modify back office order data after creating it\',\'This hook allows to modify order created from back office data after it is created\', \'1\'),
   (\'actionBeforeCreateCartSummaryFormHandler\',\'Modify back office order data before creating it\',\'This hook allows to modify order created from back office data before it is created\', \'1\'),
   (\'actionBeforeDisableModule\',\'Before a module is disabled\',\'This hook is called just before a module is disabled\', \'1\'),
@@ -83,8 +88,11 @@ INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
   (\'actionTitleGridPresenterModifier\',\'Modify title grid template data\',\'This hook allows to modify data which is about to be used in template for title grid\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
         $this->addSql('UPDATE `PREFIX_state` SET `iso_code` = \'AGU\' WHERE `name` = \'Aguascalientes\'');
-        $this->addSql('/* 8.1.0 */
-INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
+
+        /*
+         * 8.1.0
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
 	(\'actionProductPriceCalculation\', \'Product Price Calculation\', \'This hook is called into the priceCalculation method to be able to override the price calculation\', \'1\'),
   (\'actionAfterCreateCountryFormHandler\',\'Modify country identifiable object data after creating it\',\'This hook allows to modify country identifiable object forms data after it was created\', \'1\'),
   (\'actionAfterCreateOrderReturnFormHandler\',\'Modify order return identifiable object data after creating it\',\'This hook allows to modify order return identifiable object forms data after it was created\', \'1\'),
@@ -145,8 +153,11 @@ VALUES
     (\'permission\', \'Permissions\', \'Admin.Advparameters.Feature\', \'Enable / Disable the migrated permissions page.\', \'Admin.Advparameters.Help\', 0, \'beta\'),
     (\'tax_rules_group\', \'Tax rule groups\', \'Admin.Advparameters.Feature\', \'Enable / Disable the migrated tax rules page.\', \'Admin.Advparameters.Help\', 0, \'beta\'),
     (\'customer_threads\', \'Customer threads\', \'Admin.Advparameters.Feature\', \'Enable / Disable the migrated customer threads page.\', \'Admin.Advparameters.Help\', 0, \'beta\')');
-        $this->addSql('/* 8.2.0 */
-INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
+
+        /*
+         * 8.2.0
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`name`, `title`, `description`, `position`) VALUES
   (\'actionFrontControllerSetVariablesBefore\',\'Add general purpose variables in JavaScript object and Smarty templates before assignation.\',\'Allows defining variables for the JavaScript object before the core does it.\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
     }

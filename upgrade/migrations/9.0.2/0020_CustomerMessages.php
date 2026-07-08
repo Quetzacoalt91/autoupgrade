@@ -27,8 +27,10 @@ class CustomerMessages extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- https://github.com/PrestaShop/PrestaShop/pull/39606
-ALTER TABLE `PREFIX_customer_message`
+        /*
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39606
+         */
+        $this->addSql('ALTER TABLE `PREFIX_customer_message`
     MODIFY `user_agent` varchar(255) DEFAULT NULL');
     }
 }

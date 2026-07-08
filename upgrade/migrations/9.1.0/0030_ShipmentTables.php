@@ -27,9 +27,12 @@ class ShipmentTables extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Insert new shipment table */
-/* https://github.com/PrestaShop/PrestaShop/pull/38046 */
-CREATE TABLE IF NOT EXISTS `PREFIX_shipment` (
+        /*
+         * Insert new shipment table
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/38046
+         */
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_shipment` (
   `id_shipment` int(10) AUTO_INCREMENT NOT NULL,
   `id_order` int(10) NOT NULL,
   `id_carrier` int(10) NOT NULL,

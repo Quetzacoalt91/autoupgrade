@@ -36,13 +36,19 @@ class RemoveReferrersAndDeprecatedTabs extends AbstractMigration
         $this->addPhpFunction('ps_remove_controller_tab', ['AdminModulesCatalog']);
         $this->addPhpFunction('ps_remove_controller_tab', ['AdminAddonsCatalog']);
         $this->addPhpFunction('ps_remove_controller_tab', ['AdminReferrers']);
-        $this->addSql('## Remove Roles
-/* For SalesMan profile, remove parent tab `Traffic & SEO` */
-DELETE FROM `PREFIX_access`
+
+        /*
+         * Remove Roles
+         * For SalesMan profile, remove parent tab `Traffic & SEO`
+         */
+        $this->addSql('DELETE FROM `PREFIX_access`
   WHERE `id_authorization_role` IN (SELECT `id_authorization_role` FROM `PREFIX_authorization_role` WHERE `slug` LIKE \'ROLE_MOD_TAB_ADMINPARENTMETA_%\')
   AND `id_profile` = 4');
-        $this->addSql('## Remove Configuration
-DELETE FROM `PREFIX_configuration`
+
+        /*
+         * Remove Configuration
+         */
+        $this->addSql('DELETE FROM `PREFIX_configuration`
   WHERE `name` IN (\'PS_REFERRERS_CACHE_LIKE\', \'PS_REFERRERS_CACHE_DATE\')');
     }
 }

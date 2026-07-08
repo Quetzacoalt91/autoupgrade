@@ -27,8 +27,7 @@ class ManufacturerAndStockFixes extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* 1.7.5.0 */
-ALTER TABLE `PREFIX_manufacturer_lang` CHANGE `meta_title` `meta_title` VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE `PREFIX_manufacturer_lang` CHANGE `meta_title` `meta_title` VARCHAR(255) DEFAULT NULL');
         $this->addSql('UPDATE `PREFIX_stock` SET `reference` = \'\' WHERE `reference` IS NULL');
         $this->addSql('ALTER TABLE `PREFIX_stock` CHANGE `reference` `reference` VARCHAR(64) NOT NULL');
     }

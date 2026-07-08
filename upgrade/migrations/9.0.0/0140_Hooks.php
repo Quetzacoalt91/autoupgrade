@@ -27,8 +27,12 @@ class Hooks extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Auto generated hooks added for version 9.0.0 */
-INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
+        /*
+         * Auto generated hooks added for version 9.0.0
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/34133
+         */
+        $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
   (NULL, \'actionMailAlterMessageBeforeSend\', \'Modify Swift Message before sending\', \'This hook is called before the Swift Message is sent in Mail.php\', \'1\'),
   (NULL, \'actionValidateOrderBefore\', \'Before validating an order\', \'This hook is called before validating an order by core\', \'1\'),
   (NULL, \'actionDuplicateCartData\', \'Cart duplication\', \'This hook is triggered after all the cart related data has been duplicated\', \'1\'),
@@ -218,11 +222,13 @@ INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`
   (NULL, \'actionProductGetAttributesGroupsAfter\', \'Triggers after getting product attributes groups\', \'Allows to modify product attributes groups after they are retrieved from the database.\', \'1\'),
   (NULL, \'actionGetPdfRenderer\', \'Provide a PDF renderer\', \'This hook allows to provide a custom PDF renderer to generate PDF files\', \'1\'),
   (NULL, \'displayAdminStoreInformation\', \'Display extra store information\', \'This hook displays content in the Information page to add store information\', \'1\'),
-  -- https://github.com/PrestaShop/PrestaShop/pull/34133
   (NULL, \'actionSubmitAccountBefore\', \'Before customer account creation\', \'This hook is called before a customer account creation\', \'1\')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `description` = VALUES(`description`)');
-        $this->addSql('/* Auto generated hooks removed for version 9.0.0 */
-DELETE FROM `PREFIX_hook` WHERE `name` IN (
+
+        /*
+         * Auto generated hooks removed for version 9.0.0
+         */
+        $this->addSql('DELETE FROM `PREFIX_hook` WHERE `name` IN (
   \'actionAdminLoginControllerBefore\',
   \'actionAdminLoginControllerLoginBefore\',
   \'actionAdminLoginControllerLoginAfter\',
@@ -234,8 +240,11 @@ DELETE FROM `PREFIX_hook` WHERE `name` IN (
   \'actionBeforeDisableMobileModule\',
   \'actionAjaxDieBefore\'
 )');
-        $this->addSql('/* Clean hook registrations related to removed hooks */
-DELETE FROM `PREFIX_hook_module` WHERE `id_hook` NOT IN (SELECT id_hook FROM `PREFIX_hook`)');
+
+        /*
+         * Clean hook registrations related to removed hooks
+         */
+        $this->addSql('DELETE FROM `PREFIX_hook_module` WHERE `id_hook` NOT IN (SELECT id_hook FROM `PREFIX_hook`)');
         $this->addSql('DELETE FROM `PREFIX_hook_module_exceptions` WHERE `id_hook` NOT IN (SELECT id_hook FROM `PREFIX_hook`)');
     }
 }

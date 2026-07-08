@@ -27,17 +27,21 @@ class FeatureFlags extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/*
-  Insert new feature flags introduced for the newly improved shipment system
-  https://github.com/PrestaShop/PrestaShop/pull/38040
-  Insert new feature flags introduced for the migration of tag page
-  https://github.com/PrestaShop/PrestaShop/pull/39516
-*/
-INSERT INTO `PREFIX_feature_flag` (`name`, `type`, `label_wording`, `label_domain`, `description_wording`, `description_domain`, `state`, `stability`) VALUES
+        /*
+         * Insert new feature flags introduced for the newly improved shipment system
+         * Insert new feature flags introduced for the migration of tag page
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/38040
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39516
+         */
+        $this->addSql('INSERT INTO `PREFIX_feature_flag` (`name`, `type`, `label_wording`, `label_domain`, `description_wording`, `description_domain`, `state`, `stability`) VALUES
   (\'improved_shipment\', \'env,dotenv,db\', \'Improved shipment\', \'Admin.Advparameters.Feature\', \'Enable / Disable the newly improved shipment system\', \'Admin.Advparameters.Help\', 0, \'beta\'),
   (\'discount\', \'env,dotenv,db\', \'Discount\', \'Admin.Advparameters.Feature\', \'Enable / Disable the new discount system.\', \'Admin.Advparameters.Help\', 0, \'beta\'),
   (\'tag\', \'env,dotenv,db\', \'Tag\', \'Admin.Advparameters.Feature\', \'Enable / Disable the tag page.\', \'Admin.Advparameters.Help\', 0, \'beta\')');
-        $this->addSql('/* Remove obsolete feature flag from old removed cart rule migration */
-DELETE FROM `PREFIX_feature_flag` WHERE `name` IN (\'cart_rule\')');
+
+        /*
+         * Remove obsolete feature flag from old removed cart rule migration
+         */
+        $this->addSql('DELETE FROM `PREFIX_feature_flag` WHERE `name` IN (\'cart_rule\')');
     }
 }

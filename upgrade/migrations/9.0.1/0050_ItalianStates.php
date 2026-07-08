@@ -27,8 +27,10 @@ class ItalianStates extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- https://github.com/PrestaShop/PrestaShop/pull/39012
-UPDATE `PREFIX_state` s
+        /*
+         * @see https://github.com/PrestaShop/PrestaShop/pull/39012
+         */
+        $this->addSql('UPDATE `PREFIX_state` s
   JOIN `PREFIX_country` c ON s.id_country = c.id_country
   SET s.name = \'Valle d\\\'Aosta\'
 WHERE s.iso_code = \'AO\' AND c.iso_code = \'IT\'');

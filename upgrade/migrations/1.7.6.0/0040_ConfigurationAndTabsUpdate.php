@@ -27,8 +27,8 @@ class ConfigurationAndTabsUpdate extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Fix Problem with missing lang entries in Configuration */
-INSERT INTO `PREFIX_configuration_lang` (`id_configuration`, `id_lang`, `value`)
+        // Fix Problem with missing lang entries in Configuration
+        $this->addSql('INSERT INTO `PREFIX_configuration_lang` (`id_configuration`, `id_lang`, `value`)
 SELECT `id_configuration`, l.`id_lang`, `value`
   FROM `PREFIX_configuration` c
   JOIN `PREFIX_lang_shop` l on l.`id_shop` = COALESCE(c.`id_shop`, 1)

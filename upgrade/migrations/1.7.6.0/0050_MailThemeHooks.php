@@ -27,8 +27,8 @@ class MailThemeHooks extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Insert new hooks */
-INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
+        // Insert new hooks
+        $this->addSql('INSERT INTO `PREFIX_hook` (`id_hook`, `name`, `title`, `description`, `position`) VALUES
   (NULL, \'actionListMailThemes\', \'List the available email themes and layouts\', \'This hook allows to add/remove available email themes (ThemeInterface) and/or to add/remove their layouts (LayoutInterface)\', \'1\'),
   (NULL, \'actionGetMailThemeFolder\', \'Define the folder of an email theme\', \'This hook allows to change the folder of an email theme (useful if you theme is in a module for example)\', \'1\'),
   (NULL, \'actionBuildMailLayoutVariables\', \'Build the variables used in email layout rendering\', \'This hook allows to change the variables used when an email layout is rendered\', \'1\'),

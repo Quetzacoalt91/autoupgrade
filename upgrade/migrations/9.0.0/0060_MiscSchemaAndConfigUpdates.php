@@ -27,17 +27,30 @@ class MiscSchemaAndConfigUpdates extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Increase size of customized data - https://github.com/PrestaShop/PrestaShop/pull/31109 */
-ALTER TABLE `PREFIX_customized_data` MODIFY `value` varchar(1024) NOT NULL');
-        $this->addSql('/* Request optimization for back office KPI and others */
-ALTER TABLE `PREFIX_orders` ADD INDEX `invoice_date` (`invoice_date`)');
-        $this->addSql('/* Remove obsolete enable/disable module on mobile feature, obsolete hooks are removed below */
-/* https://github.com/PrestaShop/PrestaShop/pull/31151 */
-DELETE FROM `PREFIX_configuration` WHERE `name` = \'PS_ALLOW_MOBILE_DEVICE\'');
+        /*
+         * Increase size of customized data - https://github.com/PrestaShop/PrestaShop/pull/31109
+         */
+        $this->addSql('ALTER TABLE `PREFIX_customized_data` MODIFY `value` varchar(1024) NOT NULL');
+
+        /*
+         * Request optimization for back office KPI and others
+         */
+        $this->addSql('ALTER TABLE `PREFIX_orders` ADD INDEX `invoice_date` (`invoice_date`)');
+
+        /*
+         * Remove obsolete enable/disable module on mobile feature, obsolete hooks are removed below
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/31151
+         */
+        $this->addSql('DELETE FROM `PREFIX_configuration` WHERE `name` = \'PS_ALLOW_MOBILE_DEVICE\'');
         $this->addSql('UPDATE `PREFIX_module_shop` SET `enable_device` = \'7\'');
         $this->addPhpFunction('add_configuration_if_not_exists', ['PS_USE_COMBINATION_IMAGE_IN_LISTING', '0']);
-        $this->addSql('/* Remove purpose of store */
-/* https://github.com/PrestaShop/PrestaShop/pull/33232 */
-DELETE FROM `PREFIX_configuration` WHERE `name` = \'PS_SHOP_ACTIVITY\'');
+
+        /*
+         * Remove purpose of store
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/33232
+         */
+        $this->addSql('DELETE FROM `PREFIX_configuration` WHERE `name` = \'PS_SHOP_ACTIVITY\'');
     }
 }

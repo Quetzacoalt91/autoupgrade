@@ -27,8 +27,10 @@ class AdminApi extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Update Admin API tabs and roles */
-UPDATE `PREFIX_tab` SET `wording`=\'Admin API\', `wording_domain`=\'Admin.Navigation.Menu\', `class_name`=\'AdminAdminAPI\', `route_name`=\'admin_api_index\', `active`=1 WHERE `class_name`=\'AdminAuthorizationServer\'');
+        /*
+         * Update Admin API tabs and roles
+         */
+        $this->addSql('UPDATE `PREFIX_tab` SET `wording`=\'Admin API\', `wording_domain`=\'Admin.Navigation.Menu\', `class_name`=\'AdminAdminAPI\', `route_name`=\'admin_api_index\', `active`=1 WHERE `class_name`=\'AdminAuthorizationServer\'');
         $this->addPhpFunction('ps_update_tab_lang', ['Admin.Navigation.Menu', 'AdminAdminAPI']);
         $this->addSql('UPDATE `PREFIX_authorization_role` SET `slug`=\'ROLE_MOD_TAB_ADMINADMINAPI_CREATE\' WHERE `slug`=\'ROLE_MOD_TAB_ADMINAUTHORIZATIONSERVER_CREATE\'');
         $this->addSql('UPDATE `PREFIX_authorization_role` SET `slug`=\'ROLE_MOD_TAB_ADMINADMINAPI_READ\' WHERE `slug`=\'ROLE_MOD_TAB_ADMINAUTHORIZATIONSERVER_READ\'');

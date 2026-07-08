@@ -27,7 +27,9 @@ class CurrencyNumericIsoCode extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* 1.7.6.0 */
-ALTER TABLE `PREFIX_currency` CHANGE `numeric_iso_code` `numeric_iso_code` VARCHAR(3) DEFAULT NULL AFTER `iso_code`');
+        /*
+         * 1.7.6.0
+         */
+        $this->addSql('ALTER TABLE `PREFIX_currency` CHANGE `numeric_iso_code` `numeric_iso_code` VARCHAR(3) DEFAULT NULL AFTER `iso_code`');
     }
 }

@@ -27,8 +27,10 @@ class ProductAttributeLangTable extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Add new product_attribute_lang table and fill it with data */
-CREATE TABLE IF NOT EXISTS `PREFIX_product_attribute_lang` (
+        /*
+         * Add new product_attribute_lang table and fill it with data
+         */
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_product_attribute_lang` (
   `id_product_attribute` int(10) unsigned NOT NULL,
   `id_lang` int(10) unsigned NOT NULL,
   `available_now` varchar(255) DEFAULT NULL,

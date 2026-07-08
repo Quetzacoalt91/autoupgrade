@@ -27,8 +27,10 @@ class MinimalQuantityFix extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Minimal_quantity should be 1 at least, not 0 */
-UPDATE `PREFIX_product` SET `minimal_quantity` = 1 WHERE `minimal_quantity` = 0');
+        /*
+         * Minimal_quantity should be 1 at least, not 0
+         */
+        $this->addSql('UPDATE `PREFIX_product` SET `minimal_quantity` = 1 WHERE `minimal_quantity` = 0');
         $this->addSql('UPDATE `PREFIX_product_shop` SET `minimal_quantity` = 1 WHERE `minimal_quantity` = 0');
         $this->addSql('UPDATE `PREFIX_product_attribute` SET `minimal_quantity` = 1 WHERE `minimal_quantity` = 0');
         $this->addSql('UPDATE `PREFIX_product_attribute_shop` SET `minimal_quantity` = 1 WHERE `minimal_quantity` = 0');

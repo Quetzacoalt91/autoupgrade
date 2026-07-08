@@ -27,8 +27,8 @@ class AttributeDoctrineAlignment extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* UPDATE TO DOCTRINE */
-ALTER TABLE `PREFIX_attribute` CHANGE `id_attribute` `id_attribute` INT(11) NOT NULL AUTO_INCREMENT');
+        // UPDATE TO DOCTRINE
+        $this->addSql('ALTER TABLE `PREFIX_attribute` CHANGE `id_attribute` `id_attribute` INT(11) NOT NULL AUTO_INCREMENT');
         $this->addSql('ALTER TABLE `PREFIX_attribute` CHANGE `id_attribute_group` `id_attribute_group` INT(11) NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_attribute` ADD KEY `attribute_group` (`id_attribute_group`)');
         $this->addSql('ALTER TABLE `PREFIX_attribute` DROP KEY IDX_6C3355F967A664FB');

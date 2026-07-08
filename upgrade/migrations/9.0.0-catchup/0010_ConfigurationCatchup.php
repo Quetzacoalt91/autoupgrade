@@ -28,8 +28,11 @@ class ConfigurationCatchup extends AbstractMigration
     protected function up(): void
     {
         $this->addPhpFunction('add_configuration_if_not_exists', ['PS_PRODUCT_SHORT_DESC_LIMIT', '800']);
-        $this->addSql('/* 1.7.3.0 */
-UPDATE `PREFIX_configuration` SET `value` = \'In Stock\' WHERE `name` = "PS_LABEL_IN_STOCK_PRODUCTS" AND `value` IS NULL');
+
+        /*
+         * 1.7.3.0
+         */
+        $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'In Stock\' WHERE `name` = "PS_LABEL_IN_STOCK_PRODUCTS" AND `value` IS NULL');
         $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'Product available for orders\' WHERE `name` = "PS_LABEL_OOS_PRODUCTS_BOA" AND `value` IS NULL');
         $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'Out-of-Stock\' WHERE `name` = "PS_LABEL_OOS_PRODUCTS_BOD" AND `value` IS NULL');
         $this->addSql('UPDATE `PREFIX_configuration` SET `value` = \'28\' WHERE `name` = "SHOP_LOGO_HEIGHT" AND `value` = \'23\'');

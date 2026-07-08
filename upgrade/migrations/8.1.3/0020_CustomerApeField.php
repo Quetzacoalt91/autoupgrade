@@ -27,7 +27,9 @@ class CustomerApeField extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Change the ape field lenght to match all code formats */
-ALTER TABLE `PREFIX_customer` CHANGE `ape` `ape` varchar(6) DEFAULT NULL');
+        /*
+         * Change the ape field lenght to match all code formats
+         */
+        $this->addSql('ALTER TABLE `PREFIX_customer` CHANGE `ape` `ape` varchar(6) DEFAULT NULL');
     }
 }

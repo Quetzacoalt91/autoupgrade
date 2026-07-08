@@ -27,9 +27,12 @@ class AttachmentsAndCustomerMessages extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Upgrade attachment names length */
-/* https://github.com/PrestaShop/PrestaShop/pull/37598 */
-ALTER TABLE `PREFIX_attachment` MODIFY COLUMN `file_name` varchar(255) NOT NULL');
+        /*
+         * Upgrade attachment names length
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/37598
+         */
+        $this->addSql('ALTER TABLE `PREFIX_attachment` MODIFY COLUMN `file_name` varchar(255) NOT NULL');
         $this->addSql('ALTER TABLE `PREFIX_attachment_lang` MODIFY COLUMN `name` varchar(255) DEFAULT NULL');
         $this->addPhpFunction('ps_900_migrate_category_images');
         $this->addPhpFunction('add_column', ['customer_message', 'id_product', 'INT UNSIGNED DEFAULT NULL AFTER `id_employee`']);

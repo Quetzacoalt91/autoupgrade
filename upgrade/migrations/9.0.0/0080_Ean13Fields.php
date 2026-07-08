@@ -27,9 +27,12 @@ class Ean13Fields extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Change the length of the ean13 field */
-/* https://github.com/PrestaShop/PrestaShop/pull/35697 */
-ALTER TABLE `PREFIX_product` MODIFY COLUMN `ean13` VARCHAR(20)');
+        /*
+         * Change the length of the ean13 field
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/35697
+         */
+        $this->addSql('ALTER TABLE `PREFIX_product` MODIFY COLUMN `ean13` VARCHAR(20)');
         $this->addSql('ALTER TABLE `PREFIX_order_detail` MODIFY COLUMN `product_ean13` VARCHAR(20)');
         $this->addSql('ALTER TABLE `PREFIX_product_attribute` MODIFY COLUMN `ean13` VARCHAR(20)');
         $this->addSql('ALTER TABLE `PREFIX_stock` MODIFY COLUMN `ean13` VARCHAR(20)');

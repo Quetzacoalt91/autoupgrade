@@ -27,9 +27,12 @@ class AccessoryAndStockMvt extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Fixing duplicates for table "accessory" where can be duplicate records from older version of PrestaShop, because of missing PRIMARY index */
-/* https://github.com/PrestaShop/PrestaShop/pull/34530 */
-CREATE TABLE `PREFIX_accessory_tmp` SELECT DISTINCT `id_product_1`, `id_product_2` FROM `PREFIX_accessory`');
+        /*
+         * Fixing duplicates for table "accessory" where can be duplicate records from older version of PrestaShop, because of missing PRIMARY index
+         *
+         * @see https://github.com/PrestaShop/PrestaShop/pull/34530
+         */
+        $this->addSql('CREATE TABLE `PREFIX_accessory_tmp` SELECT DISTINCT `id_product_1`, `id_product_2` FROM `PREFIX_accessory`');
         $this->addSql('ALTER TABLE `PREFIX_accessory_tmp` ADD CONSTRAINT accessory_product PRIMARY KEY (`id_product_1`, `id_product_2`)');
         $this->addSql('DROP TABLE `PREFIX_accessory`');
         $this->addSql('RENAME TABLE `PREFIX_accessory_tmp` TO `PREFIX_accessory`');

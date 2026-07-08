@@ -27,8 +27,10 @@ class CartRuleTypes extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('/* Discount types for compatibility */
-CREATE TABLE IF NOT EXISTS `PREFIX_cart_rule_type` (
+        /*
+         * Discount types for compatibility
+         */
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_cart_rule_type` (
   `id_cart_rule_type` int(10) unsigned NOT NULL auto_increment,
   `discount_type` varchar(128) NOT NULL,
   `is_core` tinyint(1) unsigned NOT NULL DEFAULT \'0\',
@@ -38,16 +40,22 @@ CREATE TABLE IF NOT EXISTS `PREFIX_cart_rule_type` (
   PRIMARY KEY (`id_cart_rule_type`),
   UNIQUE KEY `discount_type` (`discount_type`)
 ) ENGINE=ENGINE_TYPE DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
-        $this->addSql('/* Localized names for cart rule types */
-CREATE TABLE IF NOT EXISTS `PREFIX_cart_rule_type_lang` (
+
+        /*
+         * Localized names for cart rule types
+         */
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_cart_rule_type_lang` (
   `id_cart_rule_type` int(10) unsigned NOT NULL,
   `id_lang` int(10) unsigned NOT NULL,
   `name` varchar(254) NOT NULL,
   `description` TEXT,
   PRIMARY KEY (`id_cart_rule_type`, `id_lang`)
 ) ENGINE=ENGINE_TYPE DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
-        $this->addSql('/* Cart rule compatibility table */
-CREATE TABLE IF NOT EXISTS `PREFIX_cart_rule_compatible_types` (
+
+        /*
+         * Cart rule compatibility table
+         */
+        $this->addSql('CREATE TABLE IF NOT EXISTS `PREFIX_cart_rule_compatible_types` (
   `id_cart_rule` int(10) unsigned NOT NULL,
   `id_cart_rule_type` int(10) unsigned NOT NULL,
   PRIMARY KEY (`id_cart_rule`, `id_cart_rule_type`),

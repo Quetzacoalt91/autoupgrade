@@ -28,8 +28,11 @@ class ProductTypeColumn extends AbstractMigration
     protected function up(): void
     {
         $this->addPhpFunction('add_column', ['product', 'product_type', 'ENUM(\'standard\', \'pack\', \'virtual\', \'combinations\', \'\') NOT NULL DEFAULT \'\'']);
-        $this->addSql('/* First set all products to standard type, then update them based on cached columns that identify the type */
-UPDATE `PREFIX_product` SET `product_type` = "standard"');
+
+        /*
+         * First set all products to standard type, then update them based on cached columns that identify the type
+         */
+        $this->addSql('UPDATE `PREFIX_product` SET `product_type` = "standard"');
         $this->addSql('UPDATE `PREFIX_product` SET `product_type` = "combinations" WHERE `cache_default_attribute` != 0');
         $this->addSql('UPDATE `PREFIX_product` SET `product_type` = "pack" WHERE `cache_is_pack` = 1');
         $this->addSql('UPDATE `PREFIX_product` SET `product_type` = "virtual" WHERE `is_virtual` = 1');

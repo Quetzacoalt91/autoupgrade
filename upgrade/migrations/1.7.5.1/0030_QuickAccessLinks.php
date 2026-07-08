@@ -27,8 +27,8 @@ class QuickAccessLinks extends AbstractMigration
 {
     protected function up(): void
     {
-        $this->addSql('-- Update default links in quick access
-UPDATE `PREFIX_quick_access` SET `link` = "index.php/improve/modules/manage"
+        // Update default links in quick access
+        $this->addSql('UPDATE `PREFIX_quick_access` SET `link` = "index.php/improve/modules/manage"
   WHERE link = "index.php/module/manage"');
         $this->addSql('UPDATE `PREFIX_quick_access` SET `link` = "index.php/sell/catalog/products/new"
   WHERE link = "index.php/product/new"');

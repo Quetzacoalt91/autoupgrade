@@ -25,7 +25,7 @@ use PrestaShop\Module\AutoUpgrade\Database\DbWrapper;
  *
  * @throws \PrestaShop\Module\AutoUpgrade\Exceptions\UpdateDatabaseException
  */
-function add_column($table, $column, $parameters)
+function add_column(string $table, string $column, string $parameters)
 {
     $column_exists = DbWrapper::executeS('SHOW COLUMNS FROM `' . _DB_PREFIX_ . $table . "` WHERE Field = '" . $column . "'");
 

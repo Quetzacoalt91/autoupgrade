@@ -11,6 +11,11 @@
         "prestashop/php-dev-tools": "^5",
         "prestashop/header-stamp": "^2.4"
     },
+    "autoload-dev": {
+        "psr-4": {
+            "PrestaShop\\Module\\AutoUpgrade\\PHPStan\\Extension\\": "phpstan/Extension/"
+        }
+    },
     "config": {
         "platform": {
             "php": "7.4"

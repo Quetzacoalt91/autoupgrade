@@ -1,17 +1,27 @@
 includes:
 	- %currentWorkingDirectory%/tests/vendor/prestashop/php-dev-tools/phpstan/ps-module-extension.neon
 
+services:
+	-
+		class: PrestaShop\Module\AutoUpgrade\PHPStan\Extension\AddPhpFunctionRule
+		tags:
+			- phpstan.rules.rule
+
 parameters:
 	bootstrapFiles:
 		- ./forceAutoload.php
 	paths:
 		# From PHPStan 0.12, paths to check are relative to the neon file
 		- ./../../classes
+		- ./../../upgrade/migrations
 		- ./../../upgrade/php/deactivate_custom_modules.php
 		- ./../../controllers
 		- ./../../ajax-upgradetab.php
 		- ./../../ajax-upgradetabconfig.php
 		- ./../../autoupgrade.php
+	scanDirectories:
+		# Move this in paths once the errors in this folder are fixed
+		- ./../../upgrade/php
 	ignoreErrors:
 		-
 			# Ignoring this error is necessary, see https://github.com/phpstan/phpstan/issues/13353

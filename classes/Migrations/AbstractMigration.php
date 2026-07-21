@@ -90,6 +90,7 @@ abstract class AbstractMigration implements MigrationInterface
      * Parameters must be scalar values or arrays of scalar values, as they are
      * serialized in the update backlog.
      *
+     * @param string $functionName
      * @param mixed[] $parameters
      */
     final protected function addPhpFunction(string $functionName, array $parameters = []): void
